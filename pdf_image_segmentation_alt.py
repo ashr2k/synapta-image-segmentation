@@ -78,12 +78,7 @@ class ImageSpecificData:
     is_embedded_table: bool = False
     dominant_colors: List[str] = field(default_factory=list)
     estimated_content_type: Optional[str] = None  # interface, document, scene, object, mixed
-    
-    # NEW FIELDS for detailed content extraction
-    definitions: List[Dict[str, str]] = field(default_factory=list)  # [{"term": "...", "definition": "..."}]
-    formulas: List[Dict[str, str]] = field(default_factory=list)  # [{"formula": "...", "description": "...", "location": "..."}]
-    variables: List[Dict[str, str]] = field(default_factory=list)  # [{"variable": "...", "meaning": "..."}]
-    tables: List[Dict[str, Any]] = field(default_factory=list)  # [{"description": "...", "rows": N, "columns": N, "content_summary": "..."}]
+
 
 @dataclass
 class FigureSpecificData:
@@ -261,12 +256,7 @@ class VisualSegment:
                 'text_density': self.image_data.text_density,
                 'is_embedded_table': self.image_data.is_embedded_table,
                 'content_type': self.image_data.estimated_content_type,
-                'dominant_colors': self.image_data.dominant_colors[:5],
-                # NEW FIELDS
-                'definitions': self.image_data.definitions,
-                'formulas': self.image_data.formulas,
-                'variables': self.image_data.variables,
-                'tables': self.image_data.tables
+                'dominant_colors': self.image_data.dominant_colors[:5]
             }
         
         if self.figure_data:
@@ -301,245 +291,148 @@ class MistralVisionAPI:
         buffered = io.BytesIO()
         image.save(buffered, format="PNG")
         return base64.b64encode(buffered.getvalue()).decode()
-
-    def analyze_visual_comprehensive(self, image: Image.Image, ocr_result: OCRResult) -> Dict[str, Any]:
-        """
-        Single API call to classify, extract metadata, and generate summary.
-        Returns dict with: {
-            'visual_type': VisualType,
-            'confidence': float,
-            'metadata': dict (type-specific),
-            'summary': str,
-            'summary_confidence': float
-        }
-        """
+    
+    def classify_visual(self, image: Image.Image, ocr_result: OCRResult) -> Tuple[VisualType, float, str]:
+        """Classify visual type using Mistral's vision model"""
         if not self.api_key:
-            print("    WARNING: MISTRAL_API_KEY not found, using fallback")
-            return self._fallback_analysis(ocr_result)
+            print("    WARNING: MISTRAL_API_KEY not found, falling back to heuristics")
+            return VisualType.FIGURE, 0.3, "fallback_heuristic"
         
         try:
             img_base64 = self._encode_image(image)
             
-            # Build OCR context
+            # Build context from OCR
             ocr_context = ""
             if ocr_result and ocr_result.raw_text:
-                ocr_context = f"\n\n**Text detected in image (OCR):**\n{ocr_result.raw_text[:500]}"
+                ocr_context = f"\n\nText detected in image:\n{ocr_result.raw_text[:300]}"
             
-            # COMPREHENSIVE PROMPT - does everything in one call
-            prompt = f"""Analyze this visual element comprehensively and provide a structured response.
+            # CORRECTED PROMPT: Prioritize specific types over generic FIGURE
+            prompt = f"""Analyze this image and classify it into ONE of these categories, prioritizing specific types over generic ones:
+
+**Categories (in priority order):**
+1. **CHART**: Data visualization with numerical axes, tick labels, and data series (line chart, bar chart, scatter plot, histogram, pie chart, yield curve). Must have measurable data plotted on axes.
+
+2. **FLOWCHART**: Sequential decision flow with specific flowchart shapes (rectangles for processes, diamonds for decisions, directed arrows showing flow path). Shows step-by-step logic or workflow.
+
+3. **DIAGRAM**: Process flow, system architecture, concept map, organizational chart, or causal diagram with labeled nodes/boxes and connecting arrows/lines showing relationships. Does NOT have numerical data axes.
+
+4. **IMAGE**: Photograph, screenshot, illustration, scanned page, or embedded graphic. Can contain text but does NOT have data axes or structured flow diagrams.
+
+5. **FIGURE**: Generic labeled visual element. Use ONLY when the content doesn't clearly fit into the above specific categories, OR when it's a composite containing multiple types (e.g., Figure 2.1 showing both a chart and a photo side-by-side).
+
+**Classification Priority Rules:**
+1. **Always prioritize specific types**: If it's clearly a chart with axes → CHART (not FIGURE), even if it has a caption "Figure 2.1"
+2. **CHART criteria**: 
+   - Has X and Y axes with numerical scales/tick marks
+   - Plots quantitative data (bars, lines, points, pie slices)
+   - Example: "Figure 2.3: Revenue Growth" showing a line graph → Classify as CHART
+3. **FLOWCHART vs DIAGRAM**:
+   - FLOWCHART: Shows sequential steps with decision points (diamonds), clear start/end
+   - DIAGRAM: Shows relationships, hierarchies, or systems without sequential flow
+4. **IMAGE criteria**:
+   - Photos, screenshots, illustrations
+   - Can have text overlays but no structured axes or flow
+   - Embedded tables/scanned documents count as IMAGE
+5. **FIGURE - last resort**:
+   - Only use when genuinely unclear or composite
+   - Mixed content (chart + diagram together)
+   - Highly abstract or unclear visual
 
 {ocr_context}
 
-**Your task has 3 parts:**
-
-## PART 1: CLASSIFICATION
-Classify this visual into ONE category (prioritize specific over generic):
-
-1. **CHART**: Data visualization with numerical axes and plotted data (line, bar, scatter, pie, histogram)
-2. **FLOWCHART**: Sequential decision flow with flowchart shapes (rectangles, diamonds, arrows)
-3. **DIAGRAM**: Process flow, system architecture, concept map with labeled nodes and connections (NO numerical axes)
-4. **IMAGE**: Photograph, screenshot, illustration, scanned page, embedded table
-5. **FIGURE**: Generic/composite element (only if doesn't fit above categories)
-
-**Classification Rules:**
-- CHART requires numerical axes with data plotted
-- FLOWCHART requires decision points (diamonds) and sequential flow
-- DIAGRAM shows relationships but NO data axes
-- IMAGE is photographic/illustrative content including screenshots and tables
-- FIGURE is last resort or composite
-
-## PART 2: METADATA EXTRACTION
-Based on the classification, extract type-specific metadata:
-
-**For CHART:**
-- chart_subtype: (line|bar|scatter|pie|histogram|candlestick|unknown)
-- x_axis_label: string or null
-- y_axis_label: string or null
-- legend_items: array of strings
-- value_range: {{"min": number, "max": number}} or null
-- data_series_count: integer
-- has_grid: boolean
-
-**For FLOWCHART:**
-- node_count: integer (estimated)
-- decision_points: integer (diamond shapes)
-- has_start_end: boolean
-- flow_direction: (top_down|left_right|mixed)
-
-**For DIAGRAM:**
-- diagram_subtype: (process_flow|decision_tree|hierarchy|cycle|system|network|unknown)
-- node_count: integer (estimated)
-- has_hierarchy: boolean
-- layout_type: (hierarchical_vertical|hierarchical_horizontal|circular|free_form)
-
-**For IMAGE:**
-- image_subtype: (screenshot|photo|illustration|scanned_page|embedded_table|unknown)
-- contains_text: boolean
-- text_density: (none|sparse|moderate|dense)
-- is_embedded_table: boolean
-- definitions: array of {{"term": "string", "definition": "string"}}
-- formulas: array of {{"formula": "string", "description": "string", "location": "string"}}
-- variables: array of {{"variable": "string", "meaning": "string"}}
-- tables: array of {{"description": "string", "rows": integer, "columns": integer, "headers": array, "content_summary": "string"}}
-
-**CRITICAL RULES for IMAGE metadata extraction:**
-
-**DEFINITIONS:**
-- ONLY extract if you can SEE explicit definition text in the image
-- Look for: boxed definitions, callouts with "Definition:", highlighted terms with explanations, glossary entries
-- DO NOT infer or create definitions - they must be literally visible in the image
-- Format: {{"term": "exact term shown", "definition": "exact definition text shown"}}
-- If NO definitions are visible, return empty array: []
-
-**FORMULAS:**
-- ONLY extract if you can SEE mathematical expressions/equations/formulas in the image
-- Look for: equals signs (=), mathematical operators (+, -, *, /, ^), mathematical notation
-- Must contain actual mathematical symbols - not just words describing math
-- For location:
-  * If in a table cell, specify EXACT cell reference you can see (e.g., "cell A1", "row 2, column 3")
-  * If cell reference is NOT visible, use descriptive location (e.g., "top-left cell", "third row, second column")
-  * If in equation box or standalone, describe position (e.g., "equation box center", "top of image")
-  * If you cannot determine location, use "location unclear"
-- Preserve EXACT notation as shown - do not rewrite or interpret
-- Examples of what counts as formulas:
-  * "PV = FV / (1+r)^n" ✓
-  * "=B2*C2/(1+D2)^E2" ✓
-  * "E = mc²" ✓
-- Examples of what is NOT a formula:
-  * "calculate the present value" ✗
-  * "multiply price by quantity" ✗
-  * "the formula shows..." ✗
-- If NO formulas are visible, return empty array: []
-
-**VARIABLES:**
-- ONLY extract if the image explicitly shows variable definitions/meanings
-- Look for: "where x = ...", variable legend, notation key, "let r denote..."
-- Must show BOTH the variable symbol AND its meaning in the image
-- DO NOT extract variables from formulas unless their meanings are also shown
-- Format: {{"variable": "symbol exactly as shown", "meaning": "meaning exactly as shown"}}
-- If NO variable definitions are visible, return empty array: []
-
-**TABLES:**
-- ONLY extract if you can see an actual table structure (grid with rows/columns)
-- Count VISIBLE rows and columns - don't estimate if unclear
-- Extract VISIBLE column headers exactly as shown
-- If headers are not visible, use empty array for headers: []
-- Describe what data the table contains based on what you can actually see
-- For rows/columns, if you cannot count exactly (e.g., table is cut off), use your best visible count
-- If NO table is visible, return empty array: []
-
-**GENERAL RULES:**
-- When in doubt, use EMPTY ARRAY [] rather than guessing
-- Only extract information that is LITERALLY VISIBLE in the image
-- Do not infer, interpret, or create content that isn't explicitly shown
-- If OCR text is provided but you cannot verify it in the image, be cautious
-- Preserve exact text/notation as shown - don't paraphrase or rewrite
-
-**For FIGURE:**
-- is_composite: boolean (contains multiple sub-figures like (a), (b), (c))
-- sub_figure_count: integer
-- contains_chart: boolean
-- contains_diagram: boolean
-- contains_image: boolean
-
-## PART 3: EDUCATIONAL SUMMARY
-Provide a 3-5 sentence educational summary that would help a student understand this visual without seeing it.
-
-**For CHART:** Describe chart type, variables plotted, key trends, data range, notable features
-**For FLOWCHART:** Describe the decision process, main stages, flow logic, decision points, outcomes
-**For DIAGRAM:** Describe the purpose, main components, relationships, structure, key insights
-**For IMAGE:** Describe main subject, key visual elements. If present: mention definitions shown, formulas visible (with their exact notation), variables explained, table structures. Focus on factual description of visible content. DO NOT describe formulas/definitions/variables/tables if they are not actually visible.
-**For FIGURE:** Describe the content type, main elements, purpose, key takeaway
-
-**Summary Rules:**
-- Only mention formulas/definitions/variables/tables if they are ACTUALLY visible in the image
-- If the image has no formulas, don't mention formulas in the summary
-- Be specific and factual - describe what you see, not what you infer
-
----
-
-**RESPONSE FORMAT (JSON only, no markdown):**
+**Response format (JSON only):**
 {{
-  "classification": {{
-    "category": "CHART|FLOWCHART|DIAGRAM|IMAGE|FIGURE",
-    "confidence": 0.0-1.0
-  }},
-  "metadata": {{
-    // Include ALL relevant fields from Part 2 based on classification
-    // For IMAGE type:
-    //   - definitions: [] if no definitions visible, otherwise array of {{term, definition}}
-    //   - formulas: [] if no formulas visible, otherwise array of {{formula, description, location}}
-    //   - variables: [] if no variable meanings shown, otherwise array of {{variable, meaning}}
-    //   - tables: [] if no table visible, otherwise array of table objects
-    // CRITICAL: Use empty arrays [], never omit fields or use null
-    // CRITICAL: Only include data that is LITERALLY VISIBLE in the image
-  }},
-  "summary": {{
-    "text": "3-5 sentence educational summary describing only what is visible",
-    "confidence": 0.0-1.0
-  }}
+  "category": "CHART|FLOWCHART|DIAGRAM|IMAGE|FIGURE",
+  "confidence": "score from 0-1"
 }}
 
-**EXAMPLES:**
+**Examples:**
+- "Figure 2.1: GDP Growth 2020-2024" with line graph → CHART (not FIGURE)
+- Boxes connected with arrows showing a process → DIAGRAM
+- Decision tree with diamond shapes → FLOWCHART  
+- Screenshot of a software interface → IMAGE
+- Composite showing chart + photo side-by-side → FIGURE"""
 
-Example 1 - Image with table containing formulas:
-{{
-  "metadata": {{
-    "definitions": [],
-    "formulas": [
-      {{"formula": "=B2/(1+C2)^D2", "description": "Present value calculation", "location": "cell E2"}},
-      {{"formula": "=SUM(E2:E10)", "description": "Total present value", "location": "cell E11"}}
-    ],
-    "variables": [],
-    "tables": [{{
-      "description": "Present value calculations for cash flows",
-      "rows": 10,
-      "columns": 5,
-      "headers": ["Year", "Cash Flow", "Rate", "Period", "PV"],
-      "content_summary": "Shows cash flows from year 1-9 with corresponding present value calculations"
-    }}]
-  }}
-}}
+            response = requests.post(
+                self.base_url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.vision_model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": f"data:image/png;base64,{img_base64}"
+                                }
+                            ]
+                        }
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.1
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                content = result['choices'][0]['message']['content'].strip()
+                
+                # Parse JSON response
+                try:
+                    json_match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+                    if json_match:
+                        content = json_match.group(1)
+                    elif '```' in content:
+                        content = re.sub(r'```\w*\s*', '', content).strip()
+                    
+                    classification = json.loads(content)
+                    
+                    category = classification.get('category', 'FIGURE').upper()
+                    confidence = float(classification.get('confidence', 0.7))
+                    
+                    # UPDATED MAPPING:
+                    type_mapping = {
+                        'CHART': VisualType.CHART,
+                        'DIAGRAM': VisualType.DIAGRAM,
+                        'FLOWCHART': VisualType.FLOWCHART,
+                        'IMAGE': VisualType.IMAGE,
+                        'FIGURE': VisualType.FIGURE
+                    }
+                    
+                    visual_type = type_mapping.get(category, VisualType.FIGURE)
+                    return visual_type, min(confidence, 0.95), "mistral_vision"
+                    
+                except json.JSONDecodeError:
+                    print(f"    Failed to parse Mistral response as JSON: {content[:200]}")
+            else:
+                print(f"    Mistral API error: {response.status_code} - {response.text[:200]}")
+                
+        except Exception as e:
+            print(f"    Mistral classification failed: {e}")
+        
+        return VisualType.FIGURE, 0.3, "fallback_heuristic"
 
-Example 2 - Image with definition box but no formulas:
-{{
-  "metadata": {{
-    "definitions": [
-      {{"term": "Present Value", "definition": "The current worth of a future sum of money given a specified rate of return"}}
-    ],
-    "formulas": [],
-    "variables": [],
-    "tables": []
-  }}
-}}
-
-Example 3 - Image with formula and variable legend:
-{{
-  "metadata": {{
-    "definitions": [],
-    "formulas": [
-      {{"formula": "PV = FV / (1 + r)^n", "description": "Present value formula", "location": "equation box at top"}}
-    ],
-    "variables": [
-      {{"variable": "PV", "meaning": "Present Value"}},
-      {{"variable": "FV", "meaning": "Future Value"}},
-      {{"variable": "r", "meaning": "interest rate per period"}},
-      {{"variable": "n", "meaning": "number of periods"}}
-    ],
-    "tables": []
-  }}
-}}
-
-Example 4 - Plain screenshot with no special content:
-{{
-  "metadata": {{
-    "definitions": [],
-    "formulas": [],
-    "variables": [],
-    "tables": []
-  }}
-}}
-"""
+    
+    def generate_summary(self, segment: 'VisualSegment') -> Tuple[Optional[str], float]:
+        """
+        Generate comprehensive summary using Mistral vision model
+        Returns (summary, confidence)
+        """
+        if not self.api_key or not segment.image_path:
+            return None, 0.0
+        
+        try:
+            image = Image.open(segment.image_path)
+            img_base64 = self._encode_image(image)
+            
+            # Generate type-specific prompt
+            prompt = self._generate_type_specific_prompt(segment)
             
             response = requests.post(
                 self.base_url,
@@ -561,167 +454,144 @@ Example 4 - Plain screenshot with no special content:
                             ]
                         }
                     ],
-                    "max_tokens": 1500,
-                    "temperature": 0.2
+                    "max_tokens": 500,
+                    "temperature": 0.3
                 },
-                timeout=45
+                timeout=30
             )
             
             if response.status_code == 200:
                 result = response.json()
-                content = result['choices'][0]['message']['content'].strip()
+                summary = result['choices'][0]['message']['content'].strip()
                 
-                # Parse JSON response
-                try:
-                    # Remove markdown code blocks if present
-                    json_match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
-                    if json_match:
-                        content = json_match.group(1)
-                    elif '```' in content:
-                        content = re.sub(r'```\w*\s*', '', content).replace('```', '').strip()
-                    
-                    data = json.loads(content)
-                    
-                    # Extract and validate classification
-                    classification = data.get('classification', {})
-                    category = classification.get('category', 'FIGURE').upper()
-                    
-                    type_mapping = {
-                        'CHART': VisualType.CHART,
-                        'DIAGRAM': VisualType.DIAGRAM,
-                        'FLOWCHART': VisualType.FLOWCHART,
-                        'IMAGE': VisualType.IMAGE,
-                        'FIGURE': VisualType.FIGURE
-                    }
-                    
-                    visual_type = type_mapping.get(category, VisualType.FIGURE)
-                    confidence = float(classification.get('confidence', 0.7))
-                    
-                    # Extract metadata
-                    metadata = data.get('metadata', {})
-                    
-                    # Extract summary
-                    summary_data = data.get('summary', {})
-                    summary_text = summary_data.get('text', '')
-                    summary_conf = float(summary_data.get('confidence', 0.8))
-                    
-                    return {
-                        'visual_type': visual_type,
-                        'confidence': min(confidence, 0.95),
-                        'metadata': metadata,
-                        'summary': summary_text,
-                        'summary_confidence': summary_conf,
-                        'method': 'mistral_vision_comprehensive'
-                    }
-                    
-                except json.JSONDecodeError as e:
-                    print(f"    Failed to parse Mistral response: {e}")
-                    print(f"    Response content: {content[:300]}")
-                    
+                # Remove markdown formatting if present
+                summary = re.sub(r'\*\*.*?\*\*:?\s*', '', summary)
+                summary = summary.strip()
+                
+                return summary, 0.85
             else:
-                print(f"    Mistral API error: {response.status_code}")
+                print(f"    Mistral summary generation error: {response.status_code}")
                 
         except Exception as e:
-            print(f"    Mistral comprehensive analysis failed: {e}")
+            print(f"    Mistral summary generation failed: {e}")
         
-        # Fallback
-        return self._fallback_analysis(ocr_result)
+        return None, 0.0
+    
+    def _generate_type_specific_prompt(self, segment: 'VisualSegment') -> str:
+        """Generate specialized prompt based on visual type"""
+        
+        # Build context
+        context_parts = []
+        if segment.caption_text:
+            context_parts.append(f"**Caption:** {segment.caption_text}")
+        if segment.figure_number:
+            context_parts.append(f"**Figure Number:** {segment.figure_number}")
+        if segment.segment_type:
+            context_parts.append(f"**Visual Type:** {segment.segment_type.value}")
+        if segment.ocr_result and segment.ocr_result.raw_text:
+            context_parts.append(f"**Text in Image:** {segment.ocr_result.raw_text[:400]}")
+        if segment.heading_path:
+            context_parts.append(f"**Section Context:** {' > '.join(segment.heading_path)}")
+        if segment.mermaid_repr and segment.mermaid_repr.mermaid_code:
+            context_parts.append(f"**Mermaid Representation:**\n```mermaid\n{segment.mermaid_repr.mermaid_code}\n```")
+        
+        context = "\n".join(context_parts) if context_parts else "No additional context available"
+        
+        # Type-specific prompts
+        if segment.segment_type == VisualType.CHART:
+            return f"""Analyze this chart image and provide a detailed, educational summary.
 
-    def _fallback_analysis(self, ocr_result: OCRResult) -> Dict[str, Any]:
-        """Fallback when API fails"""
-        return {
-            'visual_type': VisualType.FIGURE,
-            'confidence': 0.3,
-            'metadata': {
-                'definitions': [],
-                'formulas': [],
-                'variables': [],
-                'tables': []
-            },
-            'summary': 'Visual element detected (classification unavailable)',
-            'summary_confidence': 0.3,
-            'method': 'fallback_heuristic'
-        }
+**Context:**
+{context}
 
-    def _convert_metadata_to_dataclasses(self, visual_type: VisualType, 
-                                        metadata: Dict) -> Tuple:
+**Required Analysis:**
+1. **Chart Type:** Identify the specific chart type (line, bar, scatter, pie, histogram, etc.)
+2. **Variables:** What data/variables are being plotted? (X-axis, Y-axis, categories)
+3. **Key Findings:** What are the main trends, patterns, or insights visible?
+4. **Data Range:** Approximate ranges or scale of the data if visible
+5. **Notable Features:** Any outliers, intersections, or significant data points
+
+**Format:** Provide 3-4 concise, factual sentences that would help a student understand this chart without seeing it."""
+
+        elif segment.segment_type == VisualType.DIAGRAM:
+            return f"""Analyze this diagram and provide a detailed, educational summary.
+
+**Context:**
+{context}
+
+**Required Analysis:**
+1. **Purpose:** What process, system, or concept does this illustrate?
+2. **Components:** List the main components, stages, or nodes
+3. **Relationships:** Describe the connections, flow direction, or relationships
+4. **Key Insights:** What is the main takeaway or learning objective?
+5. **Structure:** How is the information organized? (hierarchical, sequential, cyclic, etc.)
+
+**Format:** Provide 3-4 concise, factual sentences that would help a student understand this diagram without seeing it."""
+
+        elif segment.segment_type == VisualType.FLOWCHART:
+            return f"""Analyze this flowchart and provide a detailed, educational summary.
+
+**Context:**
+{context}
+
+**Required Analysis:**
+1. **Purpose:** What decision process or workflow does this represent?
+2. **Stages:** List the main stages or decision points
+3. **Flow:** Describe the flow direction and logic
+4. **Decision Points:** What are the key decisions or branches?
+5. **Outcome:** What are the possible end states or outcomes?
+
+**Format:** Provide 3-4 concise, factual sentences that would help a student understand this flowchart without seeing it."""
+
+        elif segment.segment_type == VisualType.IMAGE:
+            return f"""Analyze this image and provide a clear, educational summary suitable for a student.
+
+        **Context:**
+        {context}
+
+        **Required Analysis:**
+        1. **Main Subject:** Identify the primary topic or concept illustrated.
+        2. **Key Visual Elements:** Describe important components (diagrams, labels, axes, annotations, icons).
+        3. **Definitions:** Explicitly extract and restate any definitions shown in the image (including boxed text, callouts, or captions).
+        4. **Formulas & Expressions:** List any formulas, equations, or mathematical expressions visible (including those inside table cells), preserving their original structure.
+        5. **Variables & Meanings:** For each variable or symbol shown, explain what it represents if indicated in the image.
+        6. **Tables or Structured Layouts:** If the image contains a table, matrix, or grid-like structure, summarize its rows, columns, and what relationships or comparisons it conveys.
+        7. **Purpose & Learning Outcome:** Explain what the image is intended to teach and what a student should understand after studying it.
+
+        **Output Rules:**
+        - Do **not** invent information that is not visible in the image.
+        - Prefer concise, factual language.
+
+        **Format:**
+        Provide a compact, well-structured explanation (3-6 concise sentences or short bullet points) that allows a student to understand the content without seeing the image.
         """
-        Convert API metadata dict to appropriate dataclass objects.
-        Returns: (chart_data, diagram_data, image_data, figure_data)
-        """
-        chart_data = None
-        diagram_data = None
-        image_data = None
-        figure_data = None
-        
-        if visual_type == VisualType.CHART:
-            chart_data = ChartSpecificData(
-                chart_subtype=metadata.get('chart_subtype'),
-                axes_info={
-                    'x_axis': {'label': metadata.get('x_axis_label')},
-                    'y_axis': {'label': metadata.get('y_axis_label')}
-                },
-                legend_items=metadata.get('legend_items', []),
-                series_count=metadata.get('data_series_count', 0),
-                grid_detected=metadata.get('has_grid', False),
-                value_ranges={'detected': (
-                    metadata.get('value_range', {}).get('min'),
-                    metadata.get('value_range', {}).get('max')
-                )} if metadata.get('value_range') else {}
-            )
-        
-        elif visual_type in [VisualType.FLOWCHART, VisualType.DIAGRAM]:
-            if visual_type == VisualType.FLOWCHART:
-                subtype = 'flowchart'
-            else:
-                subtype = metadata.get('diagram_subtype')
-            
-            diagram_data = DiagramSpecificData(
-                diagram_subtype=subtype,
-                node_count=metadata.get('node_count', 0),
-                has_decision_points=metadata.get('decision_points', 0) > 0,
-                hierarchy_detected=metadata.get('has_hierarchy', False),
-                layout_type=metadata.get('layout_type')
-            )
-        
-        elif visual_type == VisualType.IMAGE:
-            # Extract and validate new fields
-            definitions = metadata.get('definitions', [])
-            formulas = metadata.get('formulas', [])
-            variables = metadata.get('variables', [])
-            tables = metadata.get('tables', [])
-            
-            # Ensure they're lists (API might return null sometimes)
-            if not isinstance(definitions, list):
-                definitions = []
-            if not isinstance(formulas, list):
-                formulas = []
-            if not isinstance(variables, list):
-                variables = []
-            if not isinstance(tables, list):
-                tables = []
-            
-            image_data = ImageSpecificData(
-                image_subtype=metadata.get('image_subtype'),
-                contains_text=metadata.get('contains_text', False),
-                text_density=metadata.get('text_density', 'none'),
-                is_embedded_table=metadata.get('is_embedded_table', False),
-                definitions=definitions,
-                formulas=formulas,
-                variables=variables,
-                tables=tables
-            )
-        
-        elif visual_type == VisualType.FIGURE:
-            figure_data = FigureSpecificData(
-                is_composite=metadata.get('is_composite', False),
-                sub_figure_count=metadata.get('sub_figure_count', 0),
-                contains_chart=metadata.get('contains_chart', False),
-                contains_diagram=metadata.get('contains_diagram', False),
-                contains_image=metadata.get('contains_image', False)
-            )
-        
-        return chart_data, diagram_data, image_data, figure_data
+
+        elif segment.segment_type == VisualType.FIGURE:
+            return f"""Analyze this figure and provide a detailed, educational summary.
+
+**Context:**
+{context}
+
+**Required Analysis:**
+1. **Type:** What type of content does this figure contain? (chart, diagram, image, or composite)
+2. **Main Content:** Describe the primary visual elements
+3. **Purpose:** What concept or information is being illustrated?
+4. **Key Takeaway:** What is the main learning objective?
+
+**Format:** Provide 3-4 concise, factual sentences that would help a student understand this figure without seeing it."""
+
+        else:  # UNKNOWN
+            return f"""Analyze this visual element and provide a detailed, educational summary.
+
+**Context:**
+{context}
+
+**Required Analysis:**
+1. **Content:** Describe what you see
+2. **Purpose:** What might this be illustrating?
+3. **Educational Value:** What could a student learn from this?
+
+**Format:** Provide 2-3 concise, factual sentences."""
 
     def extract_mermaid_representation(self, image: Image.Image, segment: 'VisualSegment') -> Optional[MermaidRepresentation]:
         """
@@ -1013,6 +883,131 @@ class OCRProcessor:
                 structured['annotations'].append(line)
         
         return structured
+    
+    @staticmethod
+    def process_chart_specific(image: Image.Image, ocr_result: OCRResult) -> ChartSpecificData:
+        """Extract chart-specific features"""
+        chart_data = ChartSpecificData()
+        
+        # Detect chart subtype
+        chart_data.chart_subtype = OCRProcessor._detect_chart_subtype(image, ocr_result)
+        
+        # Extract axes information
+        chart_data.axes_info = OCRProcessor._extract_axes_detailed(ocr_result)
+        
+        # Extract value ranges
+        chart_data.value_ranges = OCRProcessor._extract_value_ranges(ocr_result)
+        
+        # Extract legend
+        chart_data.legend_items = OCRProcessor._detect_legend_advanced(ocr_result, (image.width, image.height))
+        
+        # Estimate series count (from legend or visual analysis)
+        chart_data.series_count = len(chart_data.legend_items) if chart_data.legend_items else 1
+        
+        # Detect grid
+        chart_data.grid_detected = OCRProcessor._detect_grid(image)
+        
+        # Extract dominant colors
+        chart_data.color_scheme = OCRProcessor._extract_dominant_colors(image)
+        
+        # Estimate data points
+        chart_data.estimated_data_points = OCRProcessor._estimate_data_points(image)
+        
+        # Extract tick labels
+        chart_data.tick_labels = OCRProcessor._extract_tick_labels(ocr_result)
+        
+        return chart_data
+    
+    @staticmethod
+    def process_diagram_specific(image: Image.Image, ocr_result: OCRResult) -> DiagramSpecificData:
+        """Extract diagram-specific features"""
+        diagram_data = DiagramSpecificData()
+        
+        # Detect diagram subtype
+        diagram_data.diagram_subtype = OCRProcessor._detect_diagram_subtype(image, ocr_result)
+        
+        # Extract nodes
+        diagram_data.nodes = OCRProcessor._extract_nodes(image, ocr_result)
+        diagram_data.node_count = len(diagram_data.nodes)
+        
+        # Extract connections
+        diagram_data.connections = OCRProcessor._extract_connections(image)
+        
+        # Count arrows
+        diagram_data.arrow_count = ocr_result.detected_arrows if ocr_result else 0
+        
+        # Detect hierarchy
+        diagram_data.hierarchy_detected = OCRProcessor._detect_hierarchy(diagram_data.nodes)
+        
+        # Detect layout type
+        diagram_data.layout_type = OCRProcessor._detect_layout_type(diagram_data.nodes)
+        
+        # Detect shapes
+        diagram_data.shapes_detected = OCRProcessor._detect_shapes(image)
+        
+        # Detect decision points
+        diagram_data.has_decision_points = OCRProcessor._detect_decision_points(image, ocr_result)
+        
+        return diagram_data
+    
+    @staticmethod
+    def process_image_specific(image: Image.Image, ocr_result: OCRResult) -> ImageSpecificData:
+        """Extract image-specific features"""
+        image_data = ImageSpecificData()
+        
+        # Detect image subtype
+        image_data.image_subtype = OCRProcessor._detect_image_subtype(image, ocr_result)
+        
+        # Check for text
+        if ocr_result and ocr_result.raw_text:
+            image_data.contains_text = len(ocr_result.raw_text.strip()) > 10
+            
+            # Estimate text density
+            char_count = len(ocr_result.raw_text)
+            if char_count > 500:
+                image_data.text_density = "dense"
+            elif char_count > 100:
+                image_data.text_density = "moderate"
+            elif char_count > 0:
+                image_data.text_density = "sparse"
+        
+        # Detect embedded tables
+        image_data.is_embedded_table = OCRProcessor._detect_embedded_table(image, ocr_result)
+        
+        # Extract dominant colors
+        image_data.dominant_colors = OCRProcessor._extract_dominant_colors(image)
+        
+        # Estimate content type
+        image_data.estimated_content_type = OCRProcessor._estimate_content_type(image, ocr_result)
+        
+        return image_data
+    
+    @staticmethod
+    def process_figure_specific(image: Image.Image, ocr_result: OCRResult) -> FigureSpecificData:
+        """Analyze figure for composite structure"""
+        figure_data = FigureSpecificData()
+        
+        # Detect sub-figures (a), (b), (c)
+        if ocr_result and ocr_result.raw_text:
+            subfig_pattern = r'\([a-z]\)|\b[a-z]\)'
+            matches = re.findall(subfig_pattern, ocr_result.raw_text.lower())
+            if len(matches) >= 2:
+                figure_data.is_composite = True
+                figure_data.sub_figure_count = len(matches)
+        
+        # Detect if contains chart (look for axes, grid)
+        figure_data.contains_chart = OCRProcessor._detect_grid(image)
+        
+        # Detect if contains diagram (look for boxes, arrows)
+        arrow_count = ocr_result.detected_arrows if ocr_result else 0
+        figure_data.contains_diagram = arrow_count > 3
+        
+        # Detect if contains image (high variance, photo-like)
+        img_array = np.array(image.convert('L'))
+        variance = np.var(img_array)
+        figure_data.contains_image = variance > 1000
+        
+        return figure_data
 
     @staticmethod
     def _detect_axis_labels(text: str, blocks: List[Dict]) -> Dict[str, str]:
@@ -3148,7 +3143,7 @@ class VisualSegmentationPipeline:
         return image, img_data
     
     def _process_segment(self, segment: VisualSegment, page: fitz.Page, doc: fitz.Document):
-        """Process a single visual segment with ONE API call"""
+        """Process a single visual segment with type-aware extraction"""
         
         image = Image.open(segment.image_path)
         
@@ -3156,48 +3151,51 @@ class VisualSegmentationPipeline:
         print(f"    Running OCR...")
         segment.ocr_result = OCRProcessor.process_image(image)
         
-        # STEP 2: Single comprehensive API call (classification + metadata + summary)
-        print(f"    Analyzing with Mistral API (comprehensive)...")
-        analysis_result = self.mistral_api.analyze_visual_comprehensive(
-            image, 
-            segment.ocr_result
-        )
+        # STEP 2: Classify using Mistral Vision API
+        print(f"    Classifying with Mistral API...")
+        visual_type, confidence, method = self.mistral_api.classify_visual(image, segment.ocr_result)
+        segment.segment_type = visual_type
+        segment.classification_confidence = confidence
+        segment.classification_method = method
+        print(f"    → Classified as {visual_type.value} (confidence: {confidence:.2f})")
         
-        # STEP 3: Apply results to segment
-        segment.segment_type = analysis_result['visual_type']
-        segment.classification_confidence = analysis_result['confidence']
-        segment.classification_method = analysis_result['method']
-        segment.summary = analysis_result['summary']
-        segment.summary_confidence = analysis_result['summary_confidence']
+        # STEP 3: Type-specific feature extraction
+        print(f"    Extracting type-specific features...")
+        if segment.segment_type == VisualType.CHART:
+            segment.chart_data = OCRProcessor.process_chart_specific(image, segment.ocr_result)
+            print(f"    → Chart subtype: {segment.chart_data.chart_subtype}")
         
-        print(f"    → Classified as {segment.segment_type.value} (confidence: {segment.classification_confidence:.2f})")
+        elif segment.segment_type == VisualType.DIAGRAM:
+            segment.diagram_data = OCRProcessor.process_diagram_specific(image, segment.ocr_result)
+            print(f"    → Diagram nodes: {segment.diagram_data.node_count}")
         
-        # STEP 4: Convert API metadata to dataclass objects
-        chart_data, diagram_data, image_data, figure_data = \
-            self.mistral_api._convert_metadata_to_dataclasses(
-                segment.segment_type,
-                analysis_result['metadata']
-            )
+        elif segment.segment_type == VisualType.FLOWCHART:
+            segment.diagram_data = OCRProcessor.process_diagram_specific(image, segment.ocr_result)
+            segment.diagram_data.diagram_subtype = 'flowchart'
+            print(f"    → Flowchart nodes: {segment.diagram_data.node_count}")
         
-        segment.chart_data = chart_data
-        segment.diagram_data = diagram_data
-        segment.image_data = image_data
-        segment.figure_data = figure_data
+        elif segment.segment_type == VisualType.IMAGE:
+            segment.image_data = OCRProcessor.process_image_specific(image, segment.ocr_result)
+            print(f"    → Image subtype: {segment.image_data.image_subtype}")
         
-        # STEP 5: Extract structured text for search/linking
+        elif segment.segment_type == VisualType.FIGURE:
+            segment.figure_data = OCRProcessor.process_figure_specific(image, segment.ocr_result)
+            print(f"    → Composite figure: {segment.figure_data.is_composite}")
+        
+        # STEP 4: Extract structured text for search/linking
         segment.extracted_text_structured = OCRProcessor.extract_structured_text(
             segment.ocr_result, 
             segment.segment_type
         )
         
-        # STEP 6: Mermaid extraction (optional - still separate call if needed)
+        # STEP 5: Extract Mermaid representation for diagrams/flowcharts
         if self.use_mermaid and segment.segment_type in [VisualType.DIAGRAM, VisualType.FLOWCHART]:
             print(f"    Extracting Mermaid representation...")
             segment.mermaid_repr = self.mistral_api.extract_mermaid_representation(image, segment)
             if segment.mermaid_repr and segment.mermaid_repr.mermaid_code:
-                print(f"    → Mermaid extraction successful")
+                print(f"    → Mermaid extraction successful ({segment.mermaid_repr.diagram_type})")
         
-        # STEP 7: Detect caption (keep existing logic)
+        # STEP 6: Detect caption
         text_blocks = self._extract_text_blocks(page)
         figure_num, caption = CaptionDetector.detect_caption(
             text_blocks, segment.bbox, page.rect.height
@@ -3212,14 +3210,27 @@ class VisualSegmentationPipeline:
                 f"Fig {figure_num}"
             ]
         
-        # STEP 8: Link to concepts (keep existing)
+        # STEP 7: Generate type-aware summary using Mistral API
+        print(f"    Generating type-aware summary with Mistral API...")
+        summary, summary_conf = self.mistral_api.generate_summary(segment)
+        if summary:
+            segment.summary = summary
+            segment.summary_confidence = summary_conf
+            print(f"    → Summary generated (confidence: {summary_conf:.2f})")
+        else:
+            # Fallback to rule-based summary
+            print(f"    → Using fallback rule-based summary")
+            segment.summary = self._generate_fallback_summary(segment)
+            segment.summary_confidence = 0.5
+        
+        # STEP 8: Link to concepts
         if self.concept_linker:
             segment.linked_concept_ids = self.concept_linker.link_concepts(segment)
         
-        # STEP 9: Extract context (keep existing)
+        # STEP 9: Extract context
         segment.heading_path = self._extract_heading_path(page, segment.bbox)
         segment.nearby_text = self._extract_nearby_text(page, segment.bbox)
-
+    
     def _generate_fallback_summary(self, segment: VisualSegment) -> str:
         """Rule-based fallback summary"""
         parts = []
@@ -3368,9 +3379,9 @@ if __name__ == "__main__":
     # os.environ['MISTRAL_API_KEY'] = 'your_mistral_api_key_here'
     
     pipeline = VisualSegmentationPipeline(
-        book_id="textbook_001",
-        pdf_path="D:\\D-Downloads\\chapter1.pdf",
-        taxonomy_path="D:\\D-Downloads\\Segmentation_Zvi Bodie, Alex Kane, Alan J. Marcus - Investments (2023, McGraw Hill).xlsx",
+        book_id="textbook_002",
+        pdf_path="D:\\D-Downloads\\complex.pdf",
+        taxonomy_path="D:\\D-Downloads\\Don M. Chance, Roberts Brooks - An Introduction to Derivatives and Risk Management (2015, South-Western College Pub).xlsx",
         output_dir="./extracted_visuals",
         use_mermaid=False  # Enable Mermaid extraction
     )

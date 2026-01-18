@@ -1,0 +1,1501 @@
+{
+  "book_id": "textbook_001",
+  "pdf_path": "D:\\D-Downloads\\complex.pdf",
+  "total_segments": 1,
+  "segments": [
+    {
+      "segment_id": "textbook_001_p000_61f12f4c",
+      "segment_type": "image",
+      "book_id": "textbook_001",
+      "page_no": 1,
+      "bbox": {
+        "x0": 106.3699951171875,
+        "y0": 541.885009765625,
+        "x1": 439.3840026855469,
+        "y1": 749.3809814453125,
+        "width": 333.0140075683594,
+        "height": 207.4959716796875,
+        "page_width": 651.5999755859375,
+        "page_height": 795.5999755859375
+      },
+      "image_path": "extracted_visuals\\textbook_001_p000_61f12f4c.png",
+      "caption_text": "Now let us calculate an option price. Assume that you want to find the binomial price of the option Near the right side of the screen is the section labeled “Binomial Model.” Enter the number of time ",
+      "figure_number": null,
+      "reference_keys": [],
+      "ocr_result": {
+        "raw_text": "Black-Scholes-Merton and Binomial\nOption Pricing\n10e\nInputs:\nBlack-Scholes-Merton Model\nBinomial Model\nRus Eenomial\nAsset price (Sq)\n125.94\nEuropean\nEuropean\nSteps\n100\nModel\nExercise price (X)\n125\nCall\nPut\nEuropean\nEuropean\nTime to expiration (T)\n0.0959\nPrice\n13.5589\n12.0734\nCall\nPut\nStandard deviation (a)\n83.00%\nDelta ()\n0.5693\n-0 4307\nPrice\n13.6529\n12.0704\nRisk-free rate (r or r.)\n4.56%\ndsonete\nGamma (r)\n0.0121\n0.0121\nDelta (Δ)\nCantruous\n0.5700\n-0.4300\nDividends\n0.00%\nTheta (0)\n-68.9625\n-632874\nGamma (I)\n0.0121\n0.0121\ncontinuous yield (a,) or discrete dividends below\nVega\n153235\n153235\nTheta (©)\n-68.9121\n-63.3609\nRho\n5.5759\n-83592\nIn lieu of a continuously compounded yield, place below\nAmerican\nAmerican\nup to one hundred discrete dividends and the time in years\nCall\nPut\nto each ex-dividend date Leave all unused cells blank.\nd\n0.1747\nPrice\n13.5529\n12.1127\nSet the yield above to zero. If yield is not set to zero, all\n$d2$\n-0.0824\nDeita (a)\n0.5700\n-0.4316\ndiscrete dividends are disregarded.\n('P)N\n0.5693\nGamma ()\n0.0121\n0.0121\nN(d2)\n0.4672\nThets (©)\n-68.9121\n-03.7060\nPV of divs\n0.0000\nPV of strike\n0198121\nDividend#\nDividend\nTime to\nPresentValue\nS.PV dvs\n125.9400\n0.0000",
+        "blocks": [
+          {
+            "text": "Black-Scholes-Merton and Binomial",
+            "bbox": [
+              229,
+              25,
+              524,
+              49
+            ],
+            "confidence": 99.87326860427856
+          },
+          {
+            "text": "Option Pricing",
+            "bbox": [
+              313,
+              45,
+              438,
+              73
+            ],
+            "confidence": 98.40329885482788
+          },
+          {
+            "text": "10e",
+            "bbox": [
+              358,
+              68,
+              396,
+              90
+            ],
+            "confidence": 99.88096356391907
+          },
+          {
+            "text": "Inputs:",
+            "bbox": [
+              0,
+              126,
+              50,
+              148
+            ],
+            "confidence": 99.91296529769897
+          },
+          {
+            "text": "Black-Scholes-Merton Model",
+            "bbox": [
+              285,
+              130,
+              474,
+              147
+            ],
+            "confidence": 99.78663921356201
+          },
+          {
+            "text": "Binomial Model",
+            "bbox": [
+              486,
+              130,
+              592,
+              147
+            ],
+            "confidence": 99.89932179450989
+          },
+          {
+            "text": "Rus Eenomial",
+            "bbox": [
+              620,
+              130,
+              682,
+              147
+            ],
+            "confidence": 85.17146110534668
+          },
+          {
+            "text": "Asset price (Sq)",
+            "bbox": [
+              0,
+              146,
+              83,
+              166
+            ],
+            "confidence": 92.42664575576782
+          },
+          {
+            "text": "125.94",
+            "bbox": [
+              132,
+              147,
+              174,
+              165
+            ],
+            "confidence": 99.71530437469482
+          },
+          {
+            "text": "European",
+            "bbox": [
+              362,
+              148,
+              420,
+              165
+            ],
+            "confidence": 99.99455213546753
+          },
+          {
+            "text": "European",
+            "bbox": [
+              429,
+              148,
+              487,
+              168
+            ],
+            "confidence": 99.98147487640381
+          },
+          {
+            "text": "Steps",
+            "bbox": [
+              507,
+              148,
+              548,
+              168
+            ],
+            "confidence": 99.32721257209778
+          },
+          {
+            "text": "100",
+            "bbox": [
+              586,
+              150,
+              608,
+              166
+            ],
+            "confidence": 99.99113082885742
+          },
+          {
+            "text": "Model",
+            "bbox": [
+              637,
+              145,
+              668,
+              159
+            ],
+            "confidence": 97.03500866889954
+          },
+          {
+            "text": "Exercise price (X)",
+            "bbox": [
+              0,
+              163,
+              93,
+              184
+            ],
+            "confidence": 95.00511884689331
+          },
+          {
+            "text": "125",
+            "bbox": [
+              148,
+              166,
+              172,
+              182
+            ],
+            "confidence": 99.59278106689453
+          },
+          {
+            "text": "Call",
+            "bbox": [
+              393,
+              168,
+              419,
+              183
+            ],
+            "confidence": 99.95003938674927
+          },
+          {
+            "text": "Put",
+            "bbox": [
+              463,
+              168,
+              488,
+              183
+            ],
+            "confidence": 99.93941187858582
+          },
+          {
+            "text": "European",
+            "bbox": [
+              551,
+              168,
+              611,
+              184
+            ],
+            "confidence": 99.98438358306885
+          },
+          {
+            "text": "European",
+            "bbox": [
+              609,
+              168,
+              667,
+              184
+            ],
+            "confidence": 99.79555606842041
+          },
+          {
+            "text": "Time to expiration (T)",
+            "bbox": [
+              0,
+              179,
+              109,
+              202
+            ],
+            "confidence": 93.58611702919006
+          },
+          {
+            "text": "0.0959",
+            "bbox": [
+              130,
+              181,
+              172,
+              199
+            ],
+            "confidence": 87.24946975708008
+          },
+          {
+            "text": "Price",
+            "bbox": [
+              330,
+              180,
+              365,
+              201
+            ],
+            "confidence": 91.67841672897339
+          },
+          {
+            "text": "13.5589",
+            "bbox": [
+              376,
+              184,
+              418,
+              199
+            ],
+            "confidence": 96.5820848941803
+          },
+          {
+            "text": "12.0734",
+            "bbox": [
+              444,
+              182,
+              488,
+              200
+            ],
+            "confidence": 98.46333861351013
+          },
+          {
+            "text": "Call",
+            "bbox": [
+              583,
+              183,
+              609,
+              199
+            ],
+            "confidence": 99.96097683906555
+          },
+          {
+            "text": "Put",
+            "bbox": [
+              644,
+              183,
+              669,
+              199
+            ],
+            "confidence": 99.97101426124573
+          },
+          {
+            "text": "Standard deviation (a)",
+            "bbox": [
+              0,
+              198,
+              109,
+              217
+            ],
+            "confidence": 97.39792346954346
+          },
+          {
+            "text": "83.00%",
+            "bbox": [
+              126,
+              199,
+              170,
+              217
+            ],
+            "confidence": 96.2058961391449
+          },
+          {
+            "text": "Delta ()",
+            "bbox": [
+              313,
+              200,
+              361,
+              217
+            ],
+            "confidence": 94.37205791473389
+          },
+          {
+            "text": "0.5693",
+            "bbox": [
+              380,
+              201,
+              417,
+              215
+            ],
+            "confidence": 90.4340922832489
+          },
+          {
+            "text": "-0 4307",
+            "bbox": [
+              447,
+              201,
+              487,
+              215
+            ],
+            "confidence": 90.5759334564209
+          },
+          {
+            "text": "Price",
+            "bbox": [
+              517,
+              199,
+              549,
+              217
+            ],
+            "confidence": 99.9883770942688
+          },
+          {
+            "text": "13.6529",
+            "bbox": [
+              564,
+              200,
+              608,
+              217
+            ],
+            "confidence": 86.66166663169861
+          },
+          {
+            "text": "12.0704",
+            "bbox": [
+              624,
+              200,
+              669,
+              217
+            ],
+            "confidence": 92.9594337940216
+          },
+          {
+            "text": "Risk-free rate (r or r.)",
+            "bbox": [
+              0,
+              212,
+              107,
+              232
+            ],
+            "confidence": 96.5433418750763
+          },
+          {
+            "text": "4.56%",
+            "bbox": [
+              130,
+              213,
+              171,
+              230
+            ],
+            "confidence": 95.20994424819946
+          },
+          {
+            "text": "dsonete",
+            "bbox": [
+              171,
+              211,
+              210,
+              226
+            ],
+            "confidence": 80.37384748458862
+          },
+          {
+            "text": "Gamma (r)",
+            "bbox": [
+              298,
+              211,
+              361,
+              230
+            ],
+            "confidence": 80.59548139572144
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              380,
+              215,
+              417,
+              230
+            ],
+            "confidence": 99.38101172447205
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              449,
+              214,
+              488,
+              231
+            ],
+            "confidence": 91.91689491271973
+          },
+          {
+            "text": "Delta (Δ)",
+            "bbox": [
+              500,
+              211,
+              549,
+              230
+            ],
+            "confidence": 93.46891045570374
+          },
+          {
+            "text": "Cantruous",
+            "bbox": [
+              169,
+              222,
+              224,
+              237
+            ],
+            "confidence": 75.50914287567139
+          },
+          {
+            "text": "0.5700",
+            "bbox": [
+              570,
+              213,
+              610,
+              230
+            ],
+            "confidence": 97.47319221496582
+          },
+          {
+            "text": "-0.4300",
+            "bbox": [
+              627,
+              215,
+              668,
+              230
+            ],
+            "confidence": 99.75263476371765
+          },
+          {
+            "text": "Dividends",
+            "bbox": [
+              0,
+              230,
+              52,
+              250
+            ],
+            "confidence": 95.60081958770752
+          },
+          {
+            "text": "0.00%",
+            "bbox": [
+              130,
+              230,
+              169,
+              249
+            ],
+            "confidence": 97.45847582817078
+          },
+          {
+            "text": "Theta (0)",
+            "bbox": [
+              309,
+              227,
+              362,
+              248
+            ],
+            "confidence": 87.18169331550598
+          },
+          {
+            "text": "-68.9625",
+            "bbox": [
+              371,
+              231,
+              418,
+              249
+            ],
+            "confidence": 91.15444421768188
+          },
+          {
+            "text": "-632874",
+            "bbox": [
+              442,
+              232,
+              488,
+              247
+            ],
+            "confidence": 99.24894571304321
+          },
+          {
+            "text": "Gamma (I)",
+            "bbox": [
+              488,
+              231,
+              549,
+              248
+            ],
+            "confidence": 92.42766499519348
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              571,
+              230,
+              610,
+              249
+            ],
+            "confidence": 99.19374585151672
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              631,
+              231,
+              670,
+              249
+            ],
+            "confidence": 99.96848702430725
+          },
+          {
+            "text": "continuous yield (a,) or discrete dividends below",
+            "bbox": [
+              4,
+              250,
+              243,
+              263
+            ],
+            "confidence": 96.2359607219696
+          },
+          {
+            "text": "Vega",
+            "bbox": [
+              331,
+              250,
+              362,
+              265
+            ],
+            "confidence": 99.97788667678833
+          },
+          {
+            "text": "153235",
+            "bbox": [
+              374,
+              248,
+              418,
+              265
+            ],
+            "confidence": 98.95195960998535
+          },
+          {
+            "text": "153235",
+            "bbox": [
+              444,
+              248,
+              488,
+              265
+            ],
+            "confidence": 99.95124936103821
+          },
+          {
+            "text": "Theta (©)",
+            "bbox": [
+              499,
+              247,
+              550,
+              264
+            ],
+            "confidence": 92.4274206161499
+          },
+          {
+            "text": "-68.9121",
+            "bbox": [
+              563,
+              250,
+              609,
+              264
+            ],
+            "confidence": 98.32124710083008
+          },
+          {
+            "text": "-63.3609",
+            "bbox": [
+              624,
+              250,
+              670,
+              264
+            ],
+            "confidence": 98.51332306861877
+          },
+          {
+            "text": "Rho",
+            "bbox": [
+              334,
+              264,
+              364,
+              283
+            ],
+            "confidence": 99.65949058532715
+          },
+          {
+            "text": "5.5759",
+            "bbox": [
+              378,
+              264,
+              419,
+              282
+            ],
+            "confidence": 99.76048469543457
+          },
+          {
+            "text": "-83592",
+            "bbox": [
+              445,
+              264,
+              488,
+              282
+            ],
+            "confidence": 84.88888740539551
+          },
+          {
+            "text": "In lieu of a continuously compounded yield, place below",
+            "bbox": [
+              2,
+              274,
+              281,
+              291
+            ],
+            "confidence": 96.99189066886902
+          },
+          {
+            "text": "American",
+            "bbox": [
+              558,
+              266,
+              612,
+              280
+            ],
+            "confidence": 99.95346069335938
+          },
+          {
+            "text": "American",
+            "bbox": [
+              619,
+              267,
+              670,
+              281
+            ],
+            "confidence": 99.98311400413513
+          },
+          {
+            "text": "up to one hundred discrete dividends and the time in years",
+            "bbox": [
+              3,
+              287,
+              297,
+              306
+            ],
+            "confidence": 97.32757806777954
+          },
+          {
+            "text": "Call",
+            "bbox": [
+              587,
+              280,
+              613,
+              297
+            ],
+            "confidence": 99.9018907546997
+          },
+          {
+            "text": "Put",
+            "bbox": [
+              648,
+              281,
+              672,
+              296
+            ],
+            "confidence": 99.95322227478027
+          },
+          {
+            "text": "to each ex-dividend date Leave all unused cells blank.",
+            "bbox": [
+              2,
+              300,
+              279,
+              317
+            ],
+            "confidence": 98.27567934989929
+          },
+          {
+            "text": "d",
+            "bbox": [
+              346,
+              297,
+              360,
+              312
+            ],
+            "confidence": 96.90437912940979
+          },
+          {
+            "text": "0.1747",
+            "bbox": [
+              379,
+              295,
+              418,
+              312
+            ],
+            "confidence": 99.82126355171204
+          },
+          {
+            "text": "Price",
+            "bbox": [
+              519,
+              295,
+              551,
+              313
+            ],
+            "confidence": 99.9338150024414
+          },
+          {
+            "text": "13.5529",
+            "bbox": [
+              568,
+              296,
+              612,
+              313
+            ],
+            "confidence": 97.3978042602539
+          },
+          {
+            "text": "12.1127",
+            "bbox": [
+              629,
+              298,
+              670,
+              312
+            ],
+            "confidence": 98.92874956130981
+          },
+          {
+            "text": "Set the yield above to zero. If yield is not set to zero, all",
+            "bbox": [
+              3,
+              312,
+              281,
+              331
+            ],
+            "confidence": 97.04655408859253
+          },
+          {
+            "text": "$d2$",
+            "bbox": [
+              345,
+              313,
+              362,
+              332
+            ],
+            "confidence": 67.94520616531372
+          },
+          {
+            "text": "-0.0824",
+            "bbox": [
+              377,
+              314,
+              417,
+              329
+            ],
+            "confidence": 99.79366660118103
+          },
+          {
+            "text": "Deita (a)",
+            "bbox": [
+              501,
+              309,
+              549,
+              330
+            ],
+            "confidence": 88.86119723320007
+          },
+          {
+            "text": "0.5700",
+            "bbox": [
+              574,
+              315,
+              611,
+              330
+            ],
+            "confidence": 99.9176025390625
+          },
+          {
+            "text": "-0.4316",
+            "bbox": [
+              631,
+              315,
+              671,
+              330
+            ],
+            "confidence": 99.59617853164673
+          },
+          {
+            "text": "discrete dividends are disregarded.",
+            "bbox": [
+              3,
+              326,
+              178,
+              343
+            ],
+            "confidence": 95.54854035377502
+          },
+          {
+            "text": "('P)N",
+            "bbox": [
+              328,
+              332,
+              363,
+              350
+            ],
+            "confidence": 71.58448100090027
+          },
+          {
+            "text": "0.5693",
+            "bbox": [
+              378,
+              332,
+              417,
+              349
+            ],
+            "confidence": 92.43893623352051
+          },
+          {
+            "text": "Gamma ()",
+            "bbox": [
+              489,
+              331,
+              550,
+              348
+            ],
+            "confidence": 97.5151777267456
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              573,
+              333,
+              611,
+              350
+            ],
+            "confidence": 99.7603714466095
+          },
+          {
+            "text": "0.0121",
+            "bbox": [
+              633,
+              333,
+              671,
+              350
+            ],
+            "confidence": 99.95357394218445
+          },
+          {
+            "text": "N(d2)",
+            "bbox": [
+              327,
+              345,
+              362,
+              367
+            ],
+            "confidence": 78.18583250045776
+          },
+          {
+            "text": "0.4672",
+            "bbox": [
+              377,
+              348,
+              417,
+              365
+            ],
+            "confidence": 98.17976951599121
+          },
+          {
+            "text": "Thets (©)",
+            "bbox": [
+              497,
+              345,
+              550,
+              365
+            ],
+            "confidence": 91.9560194015503
+          },
+          {
+            "text": "-68.9121",
+            "bbox": [
+              563,
+              349,
+              612,
+              366
+            ],
+            "confidence": 93.82193088531494
+          },
+          {
+            "text": "-03.7060",
+            "bbox": [
+              624,
+              349,
+              672,
+              366
+            ],
+            "confidence": 89.33781385421753
+          },
+          {
+            "text": "PV of divs",
+            "bbox": [
+              303,
+              363,
+              360,
+              382
+            ],
+            "confidence": 91.7724609375
+          },
+          {
+            "text": "0.0000",
+            "bbox": [
+              377,
+              366,
+              416,
+              381
+            ],
+            "confidence": 99.82823729515076
+          },
+          {
+            "text": "PV of strike",
+            "bbox": [
+              297,
+              378,
+              360,
+              397
+            ],
+            "confidence": 96.8226432800293
+          },
+          {
+            "text": "0198121",
+            "bbox": [
+              364,
+              380,
+              415,
+              397
+            ],
+            "confidence": 66.75382256507874
+          },
+          {
+            "text": "Dividend#",
+            "bbox": [
+              8,
+              392,
+              65,
+              405
+            ],
+            "confidence": 96.08210325241089
+          },
+          {
+            "text": "Dividend",
+            "bbox": [
+              64,
+              392,
+              112,
+              403
+            ],
+            "confidence": 98.79685640335083
+          },
+          {
+            "text": "Time to",
+            "bbox": [
+              127,
+              392,
+              168,
+              405
+            ],
+            "confidence": 99.1492748260498
+          },
+          {
+            "text": "PresentValue",
+            "bbox": [
+              174,
+              392,
+              247,
+              406
+            ],
+            "confidence": 99.70267415046692
+          },
+          {
+            "text": "S.PV dvs",
+            "bbox": [
+              297,
+              390,
+              360,
+              411
+            ],
+            "confidence": 90.3234601020813
+          },
+          {
+            "text": "125.9400",
+            "bbox": [
+              364,
+              394,
+              414,
+              410
+            ],
+            "confidence": 98.46562147140503
+          },
+          {
+            "text": "0.0000",
+            "bbox": [
+              210,
+              407,
+              246,
+              420
+            ],
+            "confidence": 99.78068470954895
+          }
+        ],
+        "confidence": 0.9521547052466753,
+        "axis_labels": {
+          "y": "PresentValue",
+          "x": "Time to"
+        },
+        "legend_items": [
+          "Black-Scholes-Merton and Binomial",
+          "Option Pricing",
+          "Inputs:",
+          "Black-Scholes-Merton Model",
+          "Binomial Model",
+          "Rus Eenomial",
+          "Asset price (Sq)",
+          "European",
+          "European",
+          "Steps"
+        ],
+        "tick_labels": {},
+        "node_texts": [
+          "Black-Scholes-Merton and Binomial",
+          "Option Pricing",
+          "Inputs:",
+          "Black-Scholes-Merton Model",
+          "Binomial Model",
+          "Rus Eenomial",
+          "Asset price (Sq)",
+          "125.94",
+          "European",
+          "European",
+          "Steps",
+          "Model",
+          "Exercise price (X)",
+          "Call",
+          "European",
+          "European",
+          "Time to expiration (T)",
+          "0.0959",
+          "Price",
+          "13.5589",
+          "12.0734",
+          "Call",
+          "Standard deviation (a)",
+          "83.00%",
+          "Delta ()",
+          "0.5693",
+          "-0 4307",
+          "Price",
+          "13.6529",
+          "12.0704",
+          "Risk-free rate (r or r.)",
+          "4.56%",
+          "dsonete",
+          "Gamma (r)",
+          "0.0121",
+          "0.0121",
+          "Delta (Δ)",
+          "Cantruous",
+          "0.5700",
+          "-0.4300",
+          "Dividends",
+          "0.00%",
+          "Theta (0)",
+          "-68.9625",
+          "-632874",
+          "Gamma (I)",
+          "0.0121",
+          "0.0121",
+          "continuous yield (a,) or discrete dividends below",
+          "Vega",
+          "153235",
+          "153235",
+          "Theta (©)",
+          "-68.9121",
+          "-63.3609",
+          "5.5759",
+          "-83592",
+          "American",
+          "American",
+          "Call",
+          "0.1747",
+          "Price",
+          "13.5529",
+          "12.1127",
+          "$d2$",
+          "-0.0824",
+          "Deita (a)",
+          "0.5700",
+          "-0.4316",
+          "discrete dividends are disregarded.",
+          "('P)N",
+          "0.5693",
+          "Gamma ()",
+          "0.0121",
+          "0.0121",
+          "N(d2)",
+          "0.4672",
+          "Thets (©)",
+          "-68.9121",
+          "-03.7060",
+          "PV of divs",
+          "0.0000",
+          "PV of strike",
+          "0198121",
+          "Dividend#",
+          "Dividend",
+          "Time to",
+          "PresentValue",
+          "S.PV dvs",
+          "125.9400",
+          "0.0000"
+        ],
+        "detected_arrows": 3
+      },
+      "mermaid_repr": null,
+      "chart_data": null,
+      "diagram_data": null,
+      "image_data": {
+        "image_subtype": "embedded_table",
+        "contains_text": true,
+        "text_density": "dense",
+        "is_embedded_table": true,
+        "dominant_colors": [],
+        "estimated_content_type": null,
+        "definitions": [],
+        "formulas": [],
+        "variables": [],
+        "tables": [
+          {
+            "description": "Comparison of Black-Scholes-Merton and Binomial option pricing models",
+            "rows": 15,
+            "columns": 10,
+            "headers": [
+              "Asset price (Sq)",
+              "Exercise price (X)",
+              "Time to expiration (T)",
+              "Standard deviation (σ)",
+              "Risk-free rate (r)",
+              "Dividends",
+              "Continuous yield (q)",
+              "Delta (Δ)",
+              "Gamma (Γ)",
+              "Theta (Θ)",
+              "Vega (v)",
+              "Rho (ρ)",
+              "PV of divs",
+              "PV of strike",
+              "S - PV divs"
+            ],
+            "content_summary": "Contains inputs and outputs for option pricing models, including asset price, exercise price, time to expiration, and various Greek letters representing sensitivity measures."
+          }
+        ]
+      },
+      "figure_data": null,
+      "extracted_text_structured": {
+        "labels": [
+          "Option Pricing",
+          "Inputs:",
+          "Black-Scholes-Merton Model",
+          "Binomial Model",
+          "Rus Eenomial",
+          "Asset price (Sq)",
+          "European",
+          "European",
+          "Steps",
+          "Model",
+          "Exercise price (X)",
+          "Call",
+          "Put",
+          "European",
+          "European",
+          "Time to expiration (T)",
+          "Price",
+          "Call",
+          "Put",
+          "Standard deviation (a)",
+          "Delta ()",
+          "Price",
+          "Risk-free rate (r or r.)",
+          "dsonete",
+          "Gamma (r)",
+          "Delta (Δ)",
+          "Cantruous",
+          "Dividends",
+          "Gamma (I)",
+          "Vega",
+          "Theta (©)",
+          "Rho",
+          "American",
+          "American",
+          "Call",
+          "Put",
+          "d",
+          "Price",
+          "Deita (a)",
+          "('P)N",
+          "Gamma ()",
+          "Thets (©)",
+          "PV of divs",
+          "PV of strike",
+          "Dividend#",
+          "Dividend",
+          "Time to",
+          "PresentValue",
+          "S.PV dvs"
+        ],
+        "values": [
+          "10e",
+          "125.94",
+          "100",
+          "125",
+          "0.0959",
+          "13.5589",
+          "12.0734",
+          "83.00%",
+          "0.5693",
+          "-0 4307",
+          "13.6529",
+          "12.0704",
+          "4.56%",
+          "0.0121",
+          "0.0121",
+          "0.5700",
+          "-0.4300",
+          "0.00%",
+          "Theta (0)",
+          "-68.9625",
+          "-632874",
+          "0.0121",
+          "0.0121",
+          "153235",
+          "153235",
+          "-68.9121",
+          "-63.3609",
+          "5.5759",
+          "-83592",
+          "0.1747",
+          "13.5529",
+          "12.1127",
+          "$d2$",
+          "-0.0824",
+          "0.5700",
+          "-0.4316",
+          "0.5693",
+          "0.0121",
+          "0.0121",
+          "N(d2)",
+          "0.4672",
+          "-68.9121",
+          "-03.7060",
+          "0.0000",
+          "0198121",
+          "125.9400",
+          "0.0000"
+        ],
+        "annotations": [
+          "Black-Scholes-Merton and Binomial",
+          "continuous yield (a,) or discrete dividends below",
+          "In lieu of a continuously compounded yield, place below",
+          "up to one hundred discrete dividends and the time in years",
+          "to each ex-dividend date Leave all unused cells blank.",
+          "Set the yield above to zero. If yield is not set to zero, all",
+          "discrete dividends are disregarded."
+        ]
+      },
+      "classification_confidence": 0.9,
+      "classification_method": "mistral_vision_comprehensive",
+      "summary": "This image is a screenshot of a spreadsheet comparing the Black-Scholes-Merton and Binomial option pricing models. It includes inputs such as asset price, exercise price, time to expiration, and standard deviation, along with outputs like price, delta, gamma, theta, vega, and rho. The table also shows the present value of dividends and the strike price. The data is organized into columns with headers and rows of numerical values.",
+      "summary_confidence": 0.9,
+      "linked_concept_ids": [
+        {
+          "concept_id": "concept_option_pricing_model_025",
+          "concept_name": "Option Pricing Model",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.722877339749851,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 6.263924451175582,
+            "term_overlap": 25.0,
+            "fuzzy_match": 9.523809523809524,
+            "context_bonus": 1.5
+          }
+        },
+        {
+          "concept_id": "concept_vega_231",
+          "concept_name": "Vega",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.7100776525179043,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 4.507765251790432,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 1.5
+          }
+        },
+        {
+          "concept_id": "concept_risk_free_rate_007",
+          "concept_name": "Risk-Free Rate",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6726838823915537,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 2.2683882391553807,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_risk_free_rate_027",
+          "concept_name": "Risk-Free Rate",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6726838823915537,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 2.2683882391553807,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_binomial_put_pricing_222",
+          "concept_name": "Binomial Put Pricing",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.4017811368910305,
+          "match_method": "term_overlap",
+          "match_details": {
+            "exact_phrase": 0.0,
+            "cosine_similarity": 6.340904386777468,
+            "term_overlap": 25.0,
+            "fuzzy_match": 8.837209302325581,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_expiration_date_024",
+          "concept_name": "Expiration date",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.3694276793528075,
+          "match_method": "term_overlap",
+          "match_details": {
+            "exact_phrase": 0.0,
+            "cosine_similarity": 3.666905866315232,
+            "term_overlap": 25.0,
+            "fuzzy_match": 8.275862068965518,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_exercise_strike_price_015",
+          "concept_name": "Exercise (Strike) Price",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.32096755743201727,
+          "match_method": "term_overlap",
+          "match_details": {
+            "exact_phrase": 0.0,
+            "cosine_similarity": 7.0967557432017285,
+            "term_overlap": 25.0,
+            "fuzzy_match": 0.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_exercise_price_strike_price_023",
+          "concept_name": "Exercise price (Strike price)",
+          "bloom_level": 1,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.32096755743201727,
+          "match_method": "term_overlap",
+          "match_details": {
+            "exact_phrase": 0.0,
+            "cosine_similarity": 7.0967557432017285,
+            "term_overlap": 25.0,
+            "fuzzy_match": 0.0,
+            "context_bonus": 0.0
+          }
+        }
+      ],
+      "heading_path": [],
+      "linked_segment_ids": [],
+      "nearby_text": "9781305104969. 2. Click on “Free Materials” tab and then “Access Now.” 3. Click on the link for BlackScholesMertonBino- mial10e.xlsm. 4. Follow the instructions on the Web page to down- load and install the spreadsheet. Now let us calculate an option price. Assume that you want to find the binomial price of the option Near the right side of the screen is the section labeled “Binomial Model.” Enter the number of time steps, with a maximum of 5,000. Because the bino- mial calculation can be time c",
+      "extraction_method": "embedded_image",
+      "confidence": 1.0,
+      "notes": "Validation: good_size, substantial_dimensions, good_aspect_ratio, good_position, good_content_variance",
+      "image_details": {
+        "subtype": "embedded_table",
+        "contains_text": true,
+        "text_density": "dense",
+        "is_embedded_table": true,
+        "content_type": null,
+        "dominant_colors": [],
+        "definitions": [],
+        "formulas": [],
+        "variables": [],
+        "tables": [
+          {
+            "description": "Comparison of Black-Scholes-Merton and Binomial option pricing models",
+            "rows": 15,
+            "columns": 10,
+            "headers": [
+              "Asset price (Sq)",
+              "Exercise price (X)",
+              "Time to expiration (T)",
+              "Standard deviation (σ)",
+              "Risk-free rate (r)",
+              "Dividends",
+              "Continuous yield (q)",
+              "Delta (Δ)",
+              "Gamma (Γ)",
+              "Theta (Θ)",
+              "Vega (v)",
+              "Rho (ρ)",
+              "PV of divs",
+              "PV of strike",
+              "S - PV divs"
+            ],
+            "content_summary": "Contains inputs and outputs for option pricing models, including asset price, exercise price, time to expiration, and various Greek letters representing sensitivity measures."
+          }
+        ]
+      }
+    }
+  ]
+}
