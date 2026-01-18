@@ -2,7 +2,9 @@
 
 ## Overview
 
-This pipeline extracts, classifies, and analyzes visual elements (figures, charts, diagrams, images) from textbook PDFs for knowledge graph construction and RAG (Retrieval-Augmented Generation) applications. The system combines multiple detection strategies, OCR, computer vision, and optional LLM-based analysis to create comprehensive visual segment metadata.
+This pipeline extracts, classifies, and analyzes visual elements (figures, charts, diagrams, images) from textbook PDFs for knowledge graph construction and RAG (Retrieval-Augmented Generation) applications. The system combines multiple detection strategies, PaddleOCR, computer vision, and **Mistral Vision API** to create comprehensive visual segment metadata with type-specific rich data extraction.
+
+**Key Update**: Migrated from OpenAI GPT-4o-mini to **Mistral Pixtral-12B** vision model for all LLM-based analysis, providing cost-effective, high-quality visual understanding.
 
 ---
 
@@ -11,16 +13,66 @@ This pipeline extracts, classifies, and analyzes visual elements (figures, chart
 ### 1. Data Models
 
 #### **VisualType (Enum)**
-Classifies visual elements into 8 distinct categories:
-- `CHART` - Data visualizations with axes (line, bar, scatter plots)
-- `DIAGRAM` - Process flows, concept maps with nodes and connections
-- `FLOWCHART` - Sequential flows with decision boxes
-- `FIGURE` - Generic labeled figures
-- `SCREENSHOT` - Computer interface captures
-- `PHOTO` - Photographs or realistic images
-- `SCANNED_DOC` - Scanned text documents
-- `TABLE_IMAGE` - Tables rendered as images
-- `UNKNOWN` - Unclassified elements
+Classifies visual elements into 5 distinct categories:
+- `CHART` - Data visualizations with numerical axes (line, bar, scatter, pie, histogram, candlestick)
+- `DIAGRAM` - Process flows, concept maps with nodes and connections (no numerical axes)
+- `FLOWCHART` - Sequential decision flows with flowchart shapes
+- `IMAGE` - Photos, screenshots, illustrations, scanned pages, embedded tables
+- `FIGURE` - Generic/composite labeled figures (fallback category)
+
+#### **Type-Specific Data Models**
+
+**ChartSpecificData**
+Enhanced metadata for charts/graphs:
+- `chart_subtype` - line, bar, scatter, pie, histogram, candlestick, yield_curve
+- `axes_info` - X/Y axis labels and metadata
+- `value_ranges` - Min/max values with multiplier handling ($1.5M, 23K)
+- `legend_items` - Detected legend entries
+- `series_count` - Number of data series
+- `grid_detected` - Presence of grid lines
+- `color_scheme` - Dominant colors (hex codes)
+- `estimated_data_points` - Data point count estimation
+- `tick_labels` - X/Y axis tick values
+
+**DiagramSpecificData**
+Enhanced metadata for diagrams/flowcharts:
+- `diagram_subtype` - process_flow, decision_tree, hierarchy, cycle, causal, system
+- `node_count` - Number of nodes/components
+- `nodes` - Node data (id, text, bbox)
+- `connections` - Connection data (arrows, flows)
+- `arrow_count` - Number of detected arrows
+- `hierarchy_detected` - Hierarchical structure presence
+- `layout_type` - hierarchical_vertical, hierarchical_horizontal, circular, free_form
+- `shapes_detected` - Rectangle, circle, diamond counts
+- `has_decision_points` - Decision node detection
+
+**ImageSpecificData** (MAJOR UPDATE)
+Enhanced metadata for images with **detailed content extraction**:
+- `image_subtype` - screenshot, photo, illustration, scanned_page, embedded_table
+- `contains_text` - Text presence indicator
+- `text_density` - none, sparse, moderate, dense
+- `is_embedded_table` - Table detection
+- `dominant_colors` - Color palette (hex codes)
+- `estimated_content_type` - interface, document, scene, object, mixed
+
+**NEW CRITICAL FIELDS** for granular content extraction:
+- `definitions` - Array of `{term, definition}` pairs extracted from visible definition boxes
+- `formulas` - Array of `{formula, description, location}` for mathematical expressions
+- `variables` - Array of `{variable, meaning}` for variable definitions
+- `tables` - Array of `{description, rows, columns, headers, content_summary}` for embedded tables
+
+**FigureSpecificData**
+Metadata for composite figures:
+- `is_composite` - Contains sub-figures (a), (b), (c)
+- `sub_figure_count` - Number of sub-figures
+- `contains_chart/diagram/image` - Content type flags
+
+#### **MermaidRepresentation** (NEW)
+Structured diagram representation in Mermaid syntax:
+- `mermaid_code` - Complete Mermaid diagram code
+- `diagram_type` - flowchart, graph, sequence
+- `extraction_confidence` - Confidence score
+- `extraction_notes` - Method and metadata
 
 #### **BoundingBox**
 Stores precise page coordinates:
@@ -31,8 +83,8 @@ Stores precise page coordinates:
 #### **OCRResult**
 Structured OCR output with specialized fields:
 - `raw_text` - Complete extracted text
-- `blocks` - Individual text blocks with bounding boxes
-- `confidence` - Average OCR confidence score
+- `blocks` - Individual text blocks with bounding boxes and confidence
+- `confidence` - Average OCR confidence score (0-1)
 - **Chart-specific**: `axis_labels`, `legend_items`, `tick_labels`
 - **Diagram-specific**: `node_texts`, `detected_arrows`
 
@@ -42,8 +94,97 @@ Complete metadata container for each visual element:
 - **Location**: `bbox` (bounding box coordinates)
 - **Content**: `image_path`, `image_bytes`, `ocr_result`
 - **Context**: `caption_text`, `figure_number`, `reference_keys`
-- **Analysis**: `summary`, `classification_confidence`, `linked_concept_ids`
+- **Analysis**: `summary`, `classification_confidence`, `classification_method`
+- **Type-Specific Rich Data**: `chart_data`, `diagram_data`, `image_data`, `figure_data`
+- **Mermaid**: `mermaid_repr` (for diagrams/flowcharts)
+- **Structured Text**: `extracted_text_structured` (labels, values, annotations)
+- **Concept Linking**: `linked_concept_ids`
 - **Relationships**: `heading_path`, `linked_segment_ids`, `nearby_text`
+
+---
+
+## Mistral Vision API Integration
+
+### **MistralVisionAPI Class**
+
+Handles all interactions with Mistral's Pixtral-12B vision model.
+
+**Key Features**:
+1. **Single Comprehensive API Call** - Classification, metadata extraction, and summary generation in one request
+2. **Type-Specific Prompting** - Custom prompts for charts, diagrams, flowcharts, images, and figures
+3. **Structured Metadata Extraction** - JSON-formatted responses with validation
+4. **Mermaid Diagram Extraction** - Converts diagrams/flowcharts to Mermaid syntax
+5. **Robust Error Handling** - Fallback mechanisms when API unavailable
+
+#### **Comprehensive Visual Analysis**
+
+```python
+analyze_visual_comprehensive(image: Image.Image, ocr_result: OCRResult) -> Dict
+```
+
+**Single API call performs**:
+1. **Classification** - Categorizes into CHART, FLOWCHART, DIAGRAM, IMAGE, or FIGURE
+2. **Metadata Extraction** - Type-specific rich data (axes, nodes, formulas, tables, etc.)
+3. **Summary Generation** - 3-5 sentence educational description
+
+**Prompt Engineering Highlights**:
+- **Chart Detection**: Requires numerical axes with plotted data
+- **Flowchart vs Diagram**: Distinguishes decision points from general relationships
+- **Image Content Extraction**: Extracts definitions, formulas, variables, and tables with strict visibility rules
+- **Confidence Calibration**: Returns calibrated scores (0-1)
+
+**CRITICAL EXTRACTION RULES** (for IMAGE type):
+
+**Definitions**:
+- Only extract if explicitly visible (boxed definitions, callouts, glossary entries)
+- DO NOT infer or create definitions
+- Format: `{term: "exact term", definition: "exact text"}`
+- Return `[]` if no definitions visible
+
+**Formulas**:
+- Only extract if mathematical expressions are visible (=, +, -, *, /, ^)
+- Preserve exact notation (e.g., `PV = FV / (1+r)^n`, `=B2*C2/(1+D2)^E2`)
+- Include location (cell reference or description)
+- Return `[]` if no formulas visible
+
+**Variables**:
+- Only extract if variable meanings are shown ("where x = ...", legend, notation key)
+- Must show BOTH symbol AND meaning
+- Format: `{variable: "symbol", meaning: "meaning"}`
+- Return `[]` if no variable definitions visible
+
+**Tables**:
+- Only extract if actual table structure is visible (grid with rows/columns)
+- Count visible rows/columns
+- Extract visible headers exactly as shown
+- Describe table content based on what's visible
+- Return `[]` if no table visible
+
+**General Rule**: When in doubt, use EMPTY ARRAY `[]` rather than guessing. Only extract information that is LITERALLY VISIBLE.
+
+#### **Mermaid Diagram Extraction**
+
+```python
+extract_mermaid_representation(image: Image.Image, segment: VisualSegment) -> MermaidRepresentation
+```
+
+Converts diagrams/flowcharts to Mermaid syntax for better LLM understanding and rendering.
+
+**Process**:
+1. Identifies all nodes/components with text labels
+2. Detects connections/arrows and directions
+3. Chooses appropriate Mermaid type (`graph TD`, `flowchart LR`, etc.)
+4. Generates syntactically correct Mermaid code
+
+**Example Output**:
+```mermaid
+flowchart TD
+    A[Start Process] --> B{Decision Point}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
 
 ---
 
@@ -51,13 +192,13 @@ Complete metadata container for each visual element:
 
 ### Phase 1: Two-Pass Image Detection Strategy
 
-The pipeline uses a **smart two-pass approach** with conflict resolution:
+**Smart two-pass approach with conflict resolution:**
 
 #### **Pass 1: Caption-Based Detection (Primary - High Confidence)**
 
 **Why caption-first?** Captions provide the most reliable signal for figure boundaries and are specifically formatted in academic texts.
 
-**Process:**
+**Process**:
 1. **Caption Pattern Matching**
    - Searches for patterns: `Figure X`, `Fig. X`, `Chart X`, `Diagram X`, `Exhibit X`
    - Uses regex with flexible formatting: `Figure\s+(\d+(?:\.\d+)?)\s*[:\-]?\s*(.*?)(?=\n\n|\Z)`
@@ -113,7 +254,7 @@ The pipeline uses a **smart two-pass approach** with conflict resolution:
 
 **Purpose:** Catch figures without detected captions (unlabeled diagrams, photos, etc.)
 
-**Process:**
+**Process**:
 1. **Direct Image Extraction**
    ```python
    image_list = page.get_images(full=True)
@@ -140,35 +281,50 @@ The pipeline uses a **smart two-pass approach** with conflict resolution:
    
    When embedded image overlaps with caption-based segment (>40% overlap):
    
-   **Decision factors:**
+   **Decision factors**:
    - Caption presence (+3 points for caption-based)
    - Size comparison (larger = more context)
    - Photo detection (raster images favor embedded)
    - Vector content count (+2 for >10 drawing commands)
    - Validation score
    
-   **Outcome:** Keeps highest-scoring version, discards duplicate
+   **Outcome**: Keeps highest-scoring version, discards duplicate
 
 ---
 
-### Phase 2: OCR Processing
+### Phase 2: OCR Processing with PaddleOCR
 
-**OCRProcessor** extracts and structures text from images:
+**OCRProcessor** extracts and structures text from images using **PaddleOCR 3.3.2**.
 
-1. **Tesseract OCR Execution**
+**Migration from Tesseract to PaddleOCR**:
+- More accurate multi-language support
+- Better handling of complex layouts
+- Built-in text orientation detection
+- Higher confidence scores
+
+**Process**:
+
+1. **PaddleOCR Execution**
    ```python
-   ocr_data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
-   raw_text = pytesseract.image_to_string(image)
+   ocr = PaddleOCR(use_textline_orientation=True, lang='en')
+   result_generator = ocr.predict(img_array)
    ```
-   - Confidence threshold: 30% (filters low-quality detections)
-   - Builds text blocks with bounding boxes
+   - Returns detection polygons and recognized text
+   - Confidence scores for each text block
+   - Handles rotated and skewed text
 
-2. **Chart-Specific Detection**
+2. **Text Block Extraction**
+   - Converts polygon coordinates to `[x0, y0, x1, y1]` format
+   - Filters by confidence threshold (scaled to 0-1 range)
+   - Builds structured blocks with text and bounding boxes
+
+3. **Chart-Specific Detection**
    - **Axis labels**: Pattern matching for "year", "time", "value", "price", "%"
-   - **Legend items**: Short text lines (<50 chars)
-   - **Tick labels**: Numeric sequences
+   - **Legend items**: Spatial clustering (right side, vertical proximity)
+   - **Tick labels**: Numeric sequences with multiplier handling ($1.5M, 23K)
+   - **Value ranges**: Enhanced parsing for currency symbols and units
 
-3. **Diagram-Specific Detection**
+4. **Diagram-Specific Detection**
    - **Node texts**: Medium-length blocks (3-50 chars) = potential diagram nodes
    - **Arrow counting**: 
      ```python
@@ -177,121 +333,76 @@ The pipeline uses a **smart two-pass approach** with conflict resolution:
      lines = cv2.HoughLinesP(edges, ...)
      ```
 
----
-
-### Phase 3: Visual Classification
-
-**VisualClassifier** uses multi-modal heuristics + optional LLM verification:
-
-#### **Heuristic Feature Extraction**
-
-1. **Text Density**
-   ```python
-   len(ocr_text) / 1000  # Normalized character count
-   ```
-
-2. **Line Density**
-   ```python
-   edges = cv2.Canny(img_array, 50, 150)
-   np.sum(edges > 0) / edges.size
-   ```
-
-3. **Axis Detection**
-   - Hough line transform finds straight lines
-   - Counts horizontal (-10° to 10°) and vertical (80° to 100°)
-   - Perpendicular lines indicate chart axes
-
-4. **Grid Pattern Detection** (for tables)
-   ```python
-   horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1))
-   vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
-   # Significant h_count AND v_count = grid
-   ```
-
-5. **Photo-Like Detection**
-   ```python
-   variance = np.var(img_array)
-   # High variance (>1000) = natural images/photos
-   # Low variance = uniform graphics/diagrams
-   ```
-
-#### **Rule-Based Scoring System**
-
-Each visual type accumulates confidence scores:
-
-```python
-# Example: Chart indicators
-if has_axes: score[CHART] += 0.6
-if line_density > 0.1: score[CHART] += 0.3
-if 'axis' in ocr_text: score[CHART] += 0.2
-
-# Diagram indicators
-if arrow_count > 3: score[FLOWCHART] += 0.5
-if node_count > 5: score[DIAGRAM] += 0.4
-
-# Table indicators
-if has_grid and text_density > 0.15: score[TABLE] += 0.7
-```
-
-Winner = highest score, capped at 0.95 confidence
-
-#### **LLM Verification** (Optional Enhancement)
-
-**When triggered:** Confidence < 0.6 from heuristics
-
-**Model:** GPT-4o-mini (cheap vision model)
-
-**Process:**
-1. Converts image to base64
-2. Sends prompt with categories + OCR context
-3. Requests single category classification
-4. Uses if LLM confidence > heuristic confidence
-
-**Cost optimization:**
-- Uses `"detail": "low"` for image encoding (cheaper)
-- Max 50 tokens response
-- Only calls when uncertain
+5. **Advanced Features**
+   - **Legend Detection**: Spatial clustering of right-aligned text
+   - **Chart Subtype Detection**: Multi-signal approach (text patterns + visual features)
+   - **Axes Extraction**: Spatial-aware (bottom zone = x-axis, left zone = y-axis)
+   - **Grid Detection**: Morphological line detection
+   - **Color Extraction**: K-means clustering on non-background pixels
 
 ---
 
-### Phase 4: Caption Detection & Extraction
+### Phase 3: Visual Classification with Mistral API
 
-**CaptionDetector** links figures to their descriptive text:
+**VisualClassifier** uses **Mistral Vision API** for intelligent classification.
 
-1. **Pattern Matching**
-   - Multiple caption formats supported
-   - Extracts figure number (e.g., "3.2") and caption text
+**Classification Process**:
 
-2. **Spatial Search**
-   - Looks within 50 points above/below bbox
-   - Combines nearby text blocks
+1. **Comprehensive Analysis**
+   - Single API call to Mistral Pixtral-12B
+   - Analyzes image with OCR context
+   - Returns classification, confidence, and metadata
 
-3. **Reference Key Generation**
-   ```python
-   reference_keys = [
-       "Figure 3.2",
-       "Fig. 3.2", 
-       "Fig 3.2"
-   ]
-   # Enables finding in-text references to this figure
-   ```
+2. **Type-Specific Prompts**
+
+   **For CHART**:
+   - Requires numerical axes with data plotted
+   - Extracts: subtype, axis labels, legend, value ranges, series count
+
+   **For FLOWCHART**:
+   - Requires decision points (diamonds) and sequential flow
+   - Extracts: node count, decision points, flow direction
+
+   **For DIAGRAM**:
+   - Shows relationships but NO numerical axes
+   - Extracts: subtype, node count, layout type, hierarchy
+
+   **For IMAGE**:
+   - Photographic/illustrative content including screenshots and tables
+   - Extracts: subtype, text density, definitions, formulas, variables, tables
+
+3. **Confidence Calibration**
+   - Returns calibrated scores (0-1)
+   - Higher confidence for clear visual indicators
+   - Lower confidence for ambiguous cases
+
+4. **Fallback Mechanism**
+   - If API unavailable, returns safe defaults
+   - Type: FIGURE, confidence: 0.3
+   - Ensures pipeline continues even without API
+
+**Chart Subtype Detection** (Enhanced):
+- **Multi-signal approach**: Text patterns + visual features
+- **Strict thresholds**: Prevents misclassification
+- **Supported types**: line, bar, scatter, pie, histogram, candlestick
+- **Debug logging**: Detailed scoring breakdown
 
 ---
 
-### Phase 5: Semantic Understanding
-
-#### **Summary Generation**
+### Phase 4: Summary Generation
 
 **Two-tier approach:**
 
-**Tier 1: LLM-Based Summary** (Primary, 0.85 confidence)
-- Uses GPT-4o-mini vision API
+**Tier 1: Mistral API Summary** (Primary, included in comprehensive call)
+- Uses Pixtral-12B vision model
 - Type-specific prompts:
   - **Charts**: "What data is plotted? Key trends?"
   - **Diagrams**: "What process? Main components? Flow direction?"
+  - **Images**: "Main subject? Key visual elements? Mention definitions/formulas/variables/tables if visible."
   - **General**: "Main subject? Key visual elements? Purpose?"
 - Incorporates caption, figure number, OCR text as context
-- 2-3 sentence concise output
+- 3-5 sentence concise output
+- **CRITICAL**: Only mentions formulas/definitions/variables/tables if ACTUALLY VISIBLE
 
 **Tier 2: Rule-Based Fallback** (0.5 confidence)
 ```python
@@ -301,35 +412,84 @@ elif segment_type == DIAGRAM:
     summary = f"Diagram with {node_count} components, {arrow_count} flows"
 ```
 
-#### **Concept Linking**
+---
 
-**ConceptLinker** maps visuals to domain concepts:
+### Phase 5: Concept Linking (Enhanced)
+
+**ConceptLinker** maps visuals to domain concepts using **multi-signal matching with TF-IDF and cosine similarity**.
+
+**Research-backed approach:**
 
 1. **Taxonomy Loading**
    ```python
-   # Expected columns: concept_id, concept_name, aliases, bloom_level, tag
+   # Expected columns: Level, Concept, Tag(s), Rationale, Page(s)
    taxonomy_df = pd.read_excel(taxonomy_path)
    ```
 
 2. **Index Building**
    - Normalizes concept names (lowercase, stripped)
-   - Expands aliases (comma-separated)
-   - Creates searchable concept map
+   - Expands tags as context terms
+   - Builds TF-IDF statistics across all concepts
 
-3. **Exact Matching**
+3. **Multi-Signal Scoring** (Updated - 100 points total)
+
+   **Signal 1: Exact Phrase Match** (0-30 points)
+   - Detects exact concept name in text
+   - Position-weighted (caption > summary > OCR)
+   
+   **Signal 2: Cosine Similarity** (0-30 points) - **NEW**
+   - TF-IDF vectors for search context and concepts
+   - Context-weighted (caption: 1.0, summary: 0.9, OCR: 0.7, nearby: 0.5)
+   - Captures semantic similarity beyond exact matches
+   
+   **Signal 3: Weighted Term Overlap** (0-25 points)
+   - Primary terms: weight 1.0, context terms: weight 0.5
+   - IDF weighting for rare terms
+   
+   **Signal 4: Fuzzy Matching** (0-10 points)
+   - Levenshtein distance for OCR errors, plurals, typos
+   - Minimum 80% similarity threshold
+   
+   **Signal 5: Context Bonus** (0-5 points)
+   - Caption mention: +50%, Summary: +30%, Nearby: +20%
+
+4. **TF-IDF Implementation**
    ```python
-   # Searches in: caption + OCR text + summary
-   if concept_key in combined_text.lower():
-       links.append({
-           'concept_id': ...,
-           'confidence': 0.9,
-           'match_method': 'exact_match'
-       })
+   # TF = term frequency (context-weighted)
+   # IDF = log((N + 1) / (df + 1)) + 1
+   tfidf = tf * idf
    ```
 
-4. **Deduplication**
+5. **Cosine Similarity Calculation**
+   ```python
+   # cos(θ) = (A · B) / (||A|| × ||B||)
+   # A = search context TF-IDF vector
+   # B = concept TF-IDF vector
+   cosine_sim = dot_product / (norm_A * norm_B)
+   ```
+
+6. **Deduplication & Ranking**
    - Removes duplicate concept_ids
-   - Returns unique links only
+   - Sorts by total confidence score
+   - Returns top matches with method attribution
+
+**Example Output**:
+```json
+{
+  "concept_id": "concept_return_on_equity_042",
+  "concept_name": "Return on Equity",
+  "bloom_level": "Application",
+  "confidence": 0.87,
+  "match_method": "cosine_similarity",
+  "match_details": {
+    "exact_phrase": 10.5,
+    "cosine_similarity": 26.4,
+    "term_overlap": 18.2,
+    "fuzzy_match": 0.0,
+    "context_bonus": 2.5
+  }
+}
+```
 
 ---
 
@@ -359,7 +519,7 @@ nearby_text = "...discusses the relationship between ROE and leverage..."
 
 ### 1. JSON Metadata File
 
-Complete segment data:
+Complete segment data with type-specific rich metadata:
 ```json
 {
   "book_id": "textbook_001",
@@ -369,20 +529,125 @@ Complete segment data:
       "segment_id": "textbook_001_p023_a4f3c2d1",
       "segment_type": "chart",
       "page_no": 23,
-      "bbox": {...},
-      "caption_text": "Figure 3.2: ROE decomposition...",
+      "bbox": {
+        "x0": 120.5, "y0": 350.2,
+        "x1": 480.3, "y1": 580.7,
+        "width": 359.8, "height": 230.5
+      },
+      "caption_text": "Figure 3.2: ROE decomposition over time",
       "figure_number": "3.2",
       "classification_confidence": 0.87,
-      "summary": "Line chart showing ROE components...",
+      "classification_method": "mistral_vision_comprehensive",
+      "summary": "Line chart showing ROE components trend from 2015-2023...",
+      "summary_confidence": 0.85,
+      
+      "chart_details": {
+        "subtype": "line",
+        "axes": {
+          "x_axis": {"label": "Year"},
+          "y_axis": {"label": "ROE (%)"}
+        },
+        "legend": ["Net Margin", "Asset Turnover", "Equity Multiplier"],
+        "series_count": 3,
+        "data_points": 27,
+        "has_grid": true,
+        "colors": ["#1f77b4", "#ff7f0e", "#2ca02c"],
+        "value_ranges": {"detected": [8.5, 24.3]}
+      },
+      
       "linked_concept_ids": [
         {
-          "concept_id": "C042",
+          "concept_id": "concept_return_on_equity_042",
           "concept_name": "Return on Equity",
-          "confidence": 0.9
+          "bloom_level": "Application",
+          "confidence": 0.87,
+          "match_method": "cosine_similarity"
         }
       ],
+      
       "heading_path": ["Chapter 3", "Profitability Analysis"],
-      "nearby_text": "...demonstrates how..."
+      "nearby_text": "...demonstrates how ROE can be decomposed..."
+    },
+    {
+      "segment_id": "textbook_001_p045_b2e7f9c3",
+      "segment_type": "image",
+      "page_no": 45,
+      
+      "image_details": {
+        "subtype": "scanned_page",
+        "contains_text": true,
+        "text_density": "dense",
+        "is_embedded_table": true,
+        
+        "definitions": [
+          {
+            "term": "Present Value",
+            "definition": "The current worth of a future sum of money given a specified rate of return"
+          }
+        ],
+        
+        "formulas": [
+          {
+            "formula": "PV = FV / (1 + r)^n",
+            "description": "Present value formula",
+            "location": "equation box at top"
+          },
+          {
+            "formula": "=B2/(1+C2)^D2",
+            "description": "Excel formula for PV calculation",
+            "location": "cell E2"
+          }
+        ],
+        
+        "variables": [
+          {
+            "variable": "PV",
+            "meaning": "Present Value"
+          },
+          {
+            "variable": "FV",
+            "meaning": "Future Value"
+          },
+          {
+            "variable": "r",
+            "meaning": "interest rate per period"
+          },
+          {
+            "variable": "n",
+            "meaning": "number of periods"
+          }
+        ],
+        
+        "tables": [
+          {
+            "description": "Present value calculations for cash flows",
+            "rows": 10,
+            "columns": 5,
+            "headers": ["Year", "Cash Flow", "Rate", "Period", "PV"],
+            "content_summary": "Shows cash flows from year 1-9 with PV calculations"
+          }
+        ]
+      }
+    },
+    {
+      "segment_id": "textbook_001_p067_c9d4a1e8",
+      "segment_type": "flowchart",
+      "page_no": 67,
+      
+      "diagram_details": {
+        "subtype": "flowchart",
+        "node_count": 8,
+        "connection_count": 12,
+        "arrow_count": 12,
+        "layout_type": "hierarchical_vertical",
+        "has_decision_points": true
+      },
+      
+      "mermaid_repr": {
+        "mermaid_code": "flowchart TD\n    A[Identify Investment] --> B{Risk Assessment}\n    B -->|Low Risk| C[Conservative Portfolio]\n    B -->|High Risk| D[Aggressive Portfolio]\n    C --> E[Monitor Performance]\n    D --> E",
+        "diagram_type": "flowchart",
+        "extraction_confidence": 0.75
+      }
     }
   ]
 }
@@ -394,6 +659,8 @@ Quick review table:
 ```csv
 segment_id,page,type,confidence,figure_number,caption,linked_concepts,summary
 textbook_001_p023_a4f3c2d1,23,chart,0.87,3.2,"Figure 3.2: ROE...",1,"Line chart..."
+textbook_001_p045_b2e7f9c3,45,image,0.82,,"",0,"Scanned page with PV formula..."
+textbook_001_p067_c9d4a1e8,67,flowchart,0.79,4.1,"Figure 4.1: Investment...",2,"Decision flowchart..."
 ```
 
 ### 3. Extracted Images
@@ -402,7 +669,8 @@ Individual PNG files:
 ```
 ./extracted_visuals/
   textbook_001_p023_a4f3c2d1.png
-  textbook_001_p024_b7e8d3f2.png
+  textbook_001_p045_b2e7f9c3.png
+  textbook_001_p067_c9d4a1e8.png
   ...
 ```
 
@@ -410,28 +678,47 @@ Individual PNG files:
 
 ## Key Algorithmic Innovations
 
-### 1. **Smart Conflict Resolution**
+### 1. **Mistral Vision API Integration**
+- Single comprehensive API call for classification + metadata + summary
+- Type-specific prompting for accurate extraction
+- Mermaid diagram generation for enhanced understanding
+- Cost-effective alternative to OpenAI (Pixtral-12B)
+
+### 2. **Smart Conflict Resolution**
 - Prevents duplicate extraction of same figure
 - Intelligently chooses best representation (caption-based vs. embedded)
 - Considers: caption presence, size, content type (vector vs. raster), validation score
 
-### 2. **Multi-Signal Boundary Detection**
+### 3. **Multi-Signal Boundary Detection**
 - Doesn't rely on single heuristic
 - Combines drawing commands, images, whitespace, text analysis
 - Prioritized fallback chain ensures robust extraction
 
-### 3. **Caption Validation**
+### 4. **Caption Validation**
 - Distinguishes actual captions from in-text references
 - Critical for preventing false positives from body paragraphs
 
-### 4. **Adaptive Classification**
-- Combines fast heuristics with expensive LLM calls
-- Only uses LLM when uncertain (confidence < 0.6)
-- Balances accuracy and cost
+### 5. **PaddleOCR Integration**
+- More accurate than Tesseract for complex layouts
+- Better multi-language support
+- Built-in orientation detection
+- Higher confidence scores
 
-### 5. **Hierarchical Feature Extraction**
-- General OCR + type-specific features (axes, nodes, arrows)
-- Enables nuanced classification and rich metadata
+### 6. **Enhanced Concept Linking**
+- TF-IDF weighting for term importance
+- **Cosine similarity** for semantic matching (NEW)
+- Fuzzy matching for OCR error tolerance
+- Multi-signal scoring with calibrated confidence
+
+### 7. **Rich Type-Specific Metadata**
+- Chart subtypes with detailed axes and legend data
+- Diagram node/connection extraction
+- **Image content extraction**: definitions, formulas, variables, tables (NEW)
+- Mermaid representation for diagrams
+
+### 8. **Structured Text Extraction**
+- Labels, values, annotations separated for search/linking
+- Enhances downstream RAG retrieval
 
 ---
 
@@ -442,7 +729,7 @@ Individual PNG files:
 fitz (PyMuPDF)          # Image extraction, drawing analysis, rendering
 
 # OCR & Computer Vision
-pytesseract             # Text extraction
+paddleocr               # PaddleOCR 3.3.2 for text extraction (NEW)
 opencv-python (cv2)     # Edge detection, line finding, morphology
 PIL (Pillow)            # Image manipulation
 
@@ -450,20 +737,39 @@ PIL (Pillow)            # Image manipulation
 pandas                  # Taxonomy loading, CSV output
 numpy                   # Array operations, statistics
 
-# Optional (LLM Enhancement)
-requests                # OpenAI API calls (GPT-4o-mini)
+# LLM Integration
+requests                # Mistral API calls (Pixtral-12B)
+base64                  # Image encoding for API
+
+# Optional (Advanced Features)
+scikit-learn            # K-means clustering, TF-IDF (for concept linking)
 ```
 
 ---
 
-## Usage Example
+## Configuration & Usage
+
+### Environment Setup
+
+```bash
+# Set Mistral API key
+export MISTRAL_API_KEY='your_mistral_api_key_here'
+
+# Install dependencies
+pip install pymupdf paddleocr opencv-python pillow pandas numpy requests scikit-learn
+```
+
+### Basic Usage
 
 ```python
+from pdf_image_segmentation import VisualSegmentationPipeline
+
 pipeline = VisualSegmentationPipeline(
     book_id="finance_textbook",
     pdf_path="./textbook.pdf",
     taxonomy_path="./concepts.xlsx",  # Optional
-    output_dir="./output"
+    output_dir="./output",
+    use_mermaid=True  # Enable Mermaid extraction for diagrams
 )
 
 segments = pipeline.process()
@@ -471,167 +777,18 @@ segments = pipeline.process()
 # Statistics
 print(f"Extracted {len(segments)} visual elements")
 print(f"Charts: {sum(1 for s in segments if s.segment_type == VisualType.CHART)}")
-print(f"With concepts: {sum(1 for s in segments if s.linked_concept_ids)}")
+print(f"With formulas: {sum(1 for s in segments if s.image_data and s.image_data.formulas)}")
+print(f"With Mermaid: {sum(1 for s in segments if s.mermaid_repr)}")
 ```
-
----
-
-## Performance Characteristics
-
-- **Accuracy**: Caption-based detection ~90% precision (high confidence)
-- **Coverage**: Two-pass approach catches both labeled and unlabeled figures
-- **Speed**: ~2-5 seconds per page (without LLM), ~5-10 seconds (with LLM)
-- **Robustness**: Multiple fallback strategies prevent failures
-
----
-
-## Configuration Options
 
 ### Pipeline Parameters
 
 ```python
 VisualSegmentationPipeline(
-    book_id: str,              # Unique identifier for the book
-    pdf_path: str,             # Path to PDF file
+    book_id: str,                  # Unique identifier for the book
+    pdf_path: str,                 # Path to PDF file
     taxonomy_path: Optional[str],  # Path to concept taxonomy (Excel)
-    output_dir: str            # Output directory for images and metadata
+    output_dir: str,               # Output directory for images and metadata
+    use_mermaid: bool = True       # Enable Mermaid extraction for diagrams
 )
 ```
-
-### Tunable Constants
-
-**Caption Detection:**
-- `CAPTION_PATTERNS` - List of regex patterns for caption formats
-- Caption proximity threshold: 50 points above/below bbox
-
-**Boundary Detection:**
-- Search range above caption: 100-500 points
-- Whitespace gap threshold: 30 points (significant gap)
-- Body paragraph width threshold: 65% of page width
-- Body paragraph text length: >120 characters
-
-**Validation:**
-- Minimum image area: 3,000 sq points (pass 1), 5,000 sq points (pass 2)
-- Minimum dimensions: 50x50 pixels
-- Aspect ratio range: 0.2-5.0
-- Header/footer zone: top/bottom 10% of page
-- Caption search distance: 60 points below image
-- Overlap threshold for conflicts: 40%
-
-**OCR:**
-- Confidence threshold: 30%
-- Node text length: 3-50 characters
-- Legend item max length: 50 characters
-
-**Classification:**
-- LLM trigger threshold: <0.6 confidence
-- Rendering DPI: 150
-- Drawing cluster distance: 100 points
-- Minimum cluster size: 3 drawing elements
-
----
-
-## Error Handling & Edge Cases
-
-### Handled Scenarios
-
-1. **Missing Captions**
-   - Pass 2 catches unlabeled figures
-   - Fallback to nearby text extraction
-
-2. **Overlapping Figures**
-   - Conflict resolution algorithm
-   - Prevents duplicate extraction
-
-3. **Poor OCR Quality**
-   - Confidence filtering (>30%)
-   - Graceful degradation (empty OCRResult)
-
-4. **API Failures**
-   - LLM classification failures caught with try-except
-   - Falls back to heuristic classification
-   - Summary generation has rule-based fallback
-
-5. **Malformed PDFs**
-   - Individual page/segment failures don't stop pipeline
-   - Warnings logged, processing continues
-
-6. **Small/Large Images**
-   - Size validation filters decorative elements
-   - Area constraints prevent full-page extractions
-
----
-
-## Future Enhancements
-
-### Potential Improvements
-
-1. **Advanced Concept Linking**
-   - Semantic similarity matching (embeddings)
-   - Multi-word concept recognition
-   - Fuzzy matching for OCR errors
-
-2. **Enhanced Classification**
-   - Custom vision model fine-tuned on textbook figures
-   - Sub-classification (bar chart vs. line chart)
-   - Table structure extraction
-
-3. **Relationship Detection**
-   - Cross-reference linking ("see Figure 3.2")
-   - Related figure clustering
-   - Data flow between diagrams
-
-4. **Quality Metrics**
-   - OCR quality assessment
-   - Extraction completeness scoring
-   - Caption-figure alignment verification
-
-5. **Performance Optimization**
-   - Parallel page processing
-   - Caching of drawing/image extractions
-   - Batch LLM API calls
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: No figures detected**
-- Check if PDF has searchable text (required for captions)
-- Verify caption patterns match document style
-- Inspect `_detect_by_drawings()` output for vector content
-
-**Issue: Duplicate figures**
-- Review conflict resolution scores
-- Check overlap threshold (40% default)
-- Examine validation scores in notes
-
-**Issue: Wrong classification**
-- Check feature extraction values (text_density, line_density, etc.)
-- Review LLM responses if enabled
-- Adjust scoring thresholds in `VisualClassifier.classify()`
-
-**Issue: Poor OCR**
-- Increase rendering DPI (default: 150)
-- Check image quality in output directory
-- Verify Tesseract installation and language data
-
-**Issue: Missing captions**
-- Review `CAPTION_PATTERNS` for document-specific formats
-- Check caption validation logic (may be too strict)
-- Examine `caption_bbox` in output for spatial issues
-
----
-
-## License & Attribution
-
-This pipeline uses the following open-source libraries:
-- PyMuPDF (GNU AGPL)
-- Tesseract OCR (Apache 2.0)
-- OpenCV (Apache 2.0)
-- Pillow (PIL License)
-
-Optional LLM features require OpenAI API access (commercial service).
-
----
