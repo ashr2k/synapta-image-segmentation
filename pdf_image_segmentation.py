@@ -1768,6 +1768,8 @@ class ConceptLinker:
         
         # Extract terms from search context
         search_terms = self._extract_terms(search_context['combined_text'])
+
+        print('Search Terms:', search_terms)
         
         # Score all concepts
         scored_matches = []
@@ -1793,9 +1795,36 @@ class ConceptLinker:
         
         # Sort by confidence
         scored_matches.sort(key=lambda x: x['confidence'], reverse=True)
-        
+
+        # DEDUPLICATION: Keep only lowest Bloom level for duplicate concepts
+        deduplicated_matches = {}
+        for match in scored_matches:
+            concept_name = match['concept_name']
+            
+            if concept_name not in deduplicated_matches:
+                # First occurrence - add it
+                deduplicated_matches[concept_name] = match
+            else:
+                # Duplicate found - compare Bloom levels
+                existing_match = deduplicated_matches[concept_name]
+                existing_level = existing_match['bloom_level']
+                new_level = match['bloom_level']
+                
+                # Keep the one with LOWER Bloom level (1 = Remember is lowest)
+                if new_level < existing_level:
+                    deduplicated_matches[concept_name] = match
+                elif new_level == existing_level:
+                    # Same level - keep the one with higher confidence
+                    if match['confidence'] > existing_match['confidence']:
+                        deduplicated_matches[concept_name] = match
+
+        # Convert back to list and sort by confidence
+        scored_matches = list(deduplicated_matches.values())
+        scored_matches.sort(key=lambda x: x['confidence'], reverse=True)
+
         # Log results
-        print(f"Found {len(scored_matches)} concept links")
+        print(f"Found {len(scored_matches)} concept links (after deduplication)")
+
         for match in scored_matches[:5]:
             print(f"  - {match['concept_name']} ({match['confidence']:.3f}, {match['match_method']})")
         
