@@ -1825,7 +1825,7 @@ class ConceptLinker:
         # Log results
         print(f"Found {len(scored_matches)} concept links (after deduplication)")
 
-        for match in scored_matches[:5]:
+        for match in scored_matches:
             print(f"  - {match['concept_name']} ({match['confidence']:.3f}, {match['match_method']})")
         
         return scored_matches
