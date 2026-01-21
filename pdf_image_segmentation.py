@@ -1643,6 +1643,12 @@ class ConceptLinker:
         self.concept_map = {}
         self.term_frequencies = defaultdict(int)  # For TF-IDF
         self.document_count = 0
+        self.term_in_multiword_concepts = defaultdict(int)  # token -> count of multi-word concepts containing it
+        # Config for gating overly-generic single-word concepts, derived from taxonomy stats (no hardcoded list).
+        # Rationale: If a single token appears across many concepts, linking a 1-word concept on that token
+        # tends to create systematic false positives.
+        self._single_term_generic_df_ratio_threshold = 0.08  # 8%+ of concepts contain the token => generic
+        self._single_term_generic_df_min = 3                 # require at least this many concepts to call it generic
         
         self._build_concept_index()
         self._compute_term_statistics()
@@ -1667,13 +1673,26 @@ class ConceptLinker:
                 'pages': row.get('Page(s)', ''),
                 'normalized_terms': set(),  # All searchable terms
                 'primary_terms': set(),     # Core concept words
-                'context_terms': set()      # Related/synonym terms
+                'context_terms': set(),     # Related/synonym terms
+                'aliases': set(),           # Multi-word aliases + acronyms
+                'acronyms': set()           # Acronyms extracted from concept string
             }
             
+            # Extract acronyms/aliases from concept string (e.g., "LIBOR (London Interbank Offer Rate)")
+            parsed = self._parse_concept_name(concept_name)
+
             # Extract and normalize primary terms
-            primary_terms = self._extract_terms(concept_name)
+            primary_terms = self._extract_terms(parsed['main'])
             concept_entry['primary_terms'] = primary_terms
             concept_entry['normalized_terms'].update(primary_terms)
+
+            # Add acronyms + alias phrases as searchable signals
+            concept_entry['acronyms'].update(parsed['acronyms'])
+            concept_entry['aliases'].update(parsed['aliases'])
+            concept_entry['normalized_terms'].update(parsed['acronyms'])
+            # Also add alias terms (tokenized) to normalized_terms
+            for alias in parsed['aliases']:
+                concept_entry['normalized_terms'].update(self._extract_terms(alias))
             
             # Extract context terms from tags
             tags = row.get('Tag(s)', '')
@@ -1686,6 +1705,65 @@ class ConceptLinker:
             self.concept_map[concept_id] = concept_entry
         
         print(f"Built concept index with {len(self.concept_map)} concepts")
+
+    def _parse_concept_name(self, concept_name: str) -> Dict[str, Any]:
+        """
+        Parse concept strings like:
+          - "LIBOR (London Interbank Offer Rate)"
+          - "Treasury Bills (T-bills)"
+          - "TED Spread"
+        Returns:
+          { main: str, acronyms: set[str], aliases: set[str] }
+        """
+        if not concept_name:
+            return {"main": "", "acronyms": set(), "aliases": set()}
+
+        text = str(concept_name).strip()
+        acronyms = set()
+        aliases = set()
+
+        # Pull any parenthetical content as an alias
+        paren_matches = re.findall(r'\(([^)]+)\)', text)
+        for p in paren_matches:
+            p_clean = p.strip()
+            if p_clean:
+                aliases.add(p_clean)
+                # If parenthetical looks like acronym ("T-bills", "LIBOR", "ETF"), store it too
+                if re.fullmatch(r"[A-Za-z][A-Za-z0-9\-]{1,15}s?", p_clean):
+                    acronyms.add(p_clean.lower())
+
+        # Remove parentheses from the main label
+        main = re.sub(r'\s*\([^)]*\)\s*', ' ', text).strip()
+
+        # If the main itself is an acronym-like token, store it
+        main_token = main.strip()
+        if re.fullmatch(r"[A-Za-z][A-Za-z0-9\-]{1,15}s?", main_token):
+            acronyms.add(main_token.lower())
+
+        # Add a few normalization-friendly variants for aliases
+        alias_variants = set()
+        for a in list(aliases) + [main]:
+            a = (a or "").strip()
+            if not a:
+                continue
+            alias_variants.add(a)
+            alias_variants.add(a.replace("-", " "))
+            alias_variants.add(re.sub(r"\s+", " ", a))
+        aliases |= alias_variants
+
+        # Add special-case finance aliases that commonly appear hyphenated in OCR/LLM summaries
+        # (Keeps this practical without requiring an external synonym model.)
+        if "t-bill" in " ".join([main.lower()] + [x.lower() for x in aliases]):
+            aliases |= {"treasury bill", "treasury bills", "treasury-bill", "treasury-bills", "t bill", "t bills"}
+            acronyms |= {"t-bill", "t-bills"}
+        if "libor" in " ".join([main.lower()] + [x.lower() for x in aliases]):
+            aliases |= {"london interbank offer rate", "london interbank offered rate"}
+            acronyms |= {"libor"}
+
+        # Normalize acronyms
+        acronyms = {self._normalize_text(a) for a in acronyms if a}
+
+        return {"main": main, "acronyms": acronyms, "aliases": aliases}
     
     def _compute_term_statistics(self):
         """Compute term frequencies across all concepts for TF-IDF"""
@@ -1698,6 +1776,12 @@ class ConceptLinker:
             # Count term frequencies
             for term in doc_terms:
                 self.term_frequencies[term] += 1
+
+            # Track which terms occur in multi-word *primary* concepts (helps gate generic 1-word concepts)
+            primary_terms = concept_data.get('primary_terms', set()) or set()
+            if len(primary_terms) >= 2:
+                for t in primary_terms:
+                    self.term_in_multiword_concepts[t] += 1
         
         self.document_count = len(all_documents)
         print(f"Computed term statistics for {self.document_count} concepts")
@@ -1718,18 +1802,60 @@ class ConceptLinker:
         
         # Normalize
         text = text.lower().strip()
+        # Keep hyphens but also treat them as separators (we add both forms)
         text = re.sub(r'[^\w\s-]', ' ', text)
         
         # Split and filter
         terms = set()
-        for word in text.split():
+        raw_tokens = text.split()
+        for word in raw_tokens:
             word = word.strip('-_')
             
             # Filter criteria
             if len(word) >= 3 and word not in self._get_stop_words():
                 terms.add(word)
+
+            # Also split hyphenated tokens into parts, and add parts
+            if '-' in word:
+                for part in word.split('-'):
+                    part = part.strip('-_')
+                    if len(part) >= 3 and part not in self._get_stop_words():
+                        terms.add(part)
         
         return terms
+
+    def _normalize_text(self, text: str) -> str:
+        """Lowercase, normalize whitespace, normalize hyphens for matching."""
+        if not text:
+            return ""
+        t = str(text).lower().strip()
+        t = t.replace("–", "-").replace("—", "-")
+        t = re.sub(r"\s+", " ", t)
+        return t
+
+    def _is_generic_single_term(self, term: str) -> bool:
+        """
+        Determine whether a single-word concept term is "generic" based on taxonomy statistics.
+        Generic terms appear across many concepts (high document frequency), so linking them alone is noisy.
+        """
+        term = self._normalize_text(term)
+        if not term:
+            return False
+
+        n = max(int(self.document_count or 0), 0)
+        if n <= 0:
+            return False
+
+        df = int(self.term_frequencies.get(term, 0))
+        # If the token participates in any multi-word primary concept (e.g., "TED Spread"),
+        # then a 1-word concept with the same token (e.g., "Spread") is usually too generic to link.
+        if int(self.term_in_multiword_concepts.get(term, 0)) >= 1 and df >= 2:
+            return True
+
+        if df < self._single_term_generic_df_min:
+            return False
+
+        return (df / n) >= self._single_term_generic_df_ratio_threshold
     
     def _get_stop_words(self) -> set:
         """Common stop words to filter out"""
@@ -1781,7 +1907,7 @@ class ConceptLinker:
                 concept_data=concept_data
             )
             
-            if match_score['total_score'] > 0.3:  # Minimum threshold
+            if match_score['total_score'] > 0.5:  # Minimum threshold
                 scored_matches.append({
                     'concept_id': concept_data['concept_id'],
                     'concept_name': concept_data['concept_name'],
@@ -1894,7 +2020,15 @@ class ConceptLinker:
         primary_terms = concept_data['primary_terms']
         all_terms = concept_data['normalized_terms']
         
-        # SIGNAL 1: Exact phrase matching (30 points max)
+        # Gate: avoid linking extremely generic one-word concepts unless there is strong evidence
+        if self._should_gate_generic_single_term(concept_data, search_context):
+            return {
+                'total_score': 0.0,
+                'method': 'gated_generic_single_term',
+                'details': {k: 0.0 for k in score_breakdown}
+            }
+
+        # SIGNAL 1: Exact phrase / alias match (30 points max)
         exact_score = self._score_exact_match(
             concept_name, 
             search_context['combined_text']
@@ -1950,6 +2084,56 @@ class ConceptLinker:
             'details': score_breakdown
         }
 
+    def _should_gate_generic_single_term(self, concept_data: Dict, search_context: Dict) -> bool:
+        """
+        If the taxonomy contains concepts like "Spread" or "Rate", don't link them
+        unless we have strong evidence (caption/summary exact phrase, or acronym/alias match).
+        """
+        primary_terms = concept_data.get("primary_terms", set()) or set()
+        acronyms = concept_data.get("acronyms", set()) or set()
+        aliases = concept_data.get("aliases", set()) or set()
+
+        # Not a single-term concept => don't gate
+        if len(primary_terms) >= 2:
+            return False
+
+        # Single-term concept; if it's not in our generic list, allow normal scoring
+        only_term = next(iter(primary_terms), "")
+        if not only_term or not self._is_generic_single_term(only_term):
+            return False
+
+        # Allow ONLY if it appears as a standalone caption/title.
+        # We intentionally do NOT allow summary/OCR matches for generic single-word concepts,
+        # because they appear frequently in explanatory prose (e.g., "TED spread") and cause over-linking.
+        caption = self._normalize_text(search_context.get("caption", ""))
+
+        # Standalone caption heuristics: caption is short and begins with the term
+        # Examples allowed:
+        #   "Spread"
+        #   "Spread: definition ..."
+        #   "Spread - ..."
+        if caption:
+            if len(caption) <= 80:
+                if re.match(rf"^{re.escape(only_term)}(\b|[\s:\-–—])", caption, flags=re.IGNORECASE):
+                    return False
+
+        # Allow if any acronym/alias phrase matches strongly anywhere
+        combined = self._normalize_text(search_context.get("combined_text", ""))
+        for a in acronyms:
+            if self._normalize_text(a) == only_term:
+                continue
+            if a and self._contains_whole_phrase(combined, a):
+                return False
+        for alias in aliases:
+            alias_n = self._normalize_text(alias)
+            if alias_n == only_term:
+                continue
+            if alias_n and self._contains_whole_phrase(combined, alias_n):
+                return False
+
+        # Otherwise: gate it out
+        return True
+
     def _score_exact_match(self, concept_name: str, text: str) -> float:
         """
         Exact phrase matching with position weighting.
@@ -1959,15 +2143,47 @@ class ConceptLinker:
         - 0.8: Exact match in medium-value context (summary)
         - 0.6: Exact match in low-value context (OCR/nearby)
         """
-        concept_lower = concept_name.lower().strip()
-        text_lower = text.lower()
-        
-        if concept_lower not in text_lower:
+        """
+        Exact match now supports:
+        - whole-phrase word-boundary matching
+        - hyphen/space variants ("t-bill" vs "t bill")
+        - aliases/acronyms extracted from the taxonomy concept name
+        """
+        text_norm = self._normalize_text(text)
+        if not text_norm:
             return 0.0
-        
-        # Check which context it appears in (if we had separate fields)
-        # For now, return high score for exact match
-        return 1.0
+
+        parsed = self._parse_concept_name(concept_name)
+        candidates = set()
+        candidates.add(concept_name)
+        candidates.add(parsed.get("main", ""))
+        candidates |= set(parsed.get("aliases", set()))
+        candidates |= set(parsed.get("acronyms", set()))
+
+        # Score: prefer main phrase, but allow aliases
+        best = 0.0
+        for c in candidates:
+            c_norm = self._normalize_text(c)
+            if not c_norm:
+                continue
+            if self._contains_whole_phrase(text_norm, c_norm):
+                # Boost if multi-word or acronym-like (LIBOR, TED, etc.)
+                if len(c_norm.split()) >= 2 or re.fullmatch(r"[a-z]{2,10}(-[a-z]{1,10})?s?", c_norm):
+                    best = max(best, 1.0)
+                else:
+                    best = max(best, 0.7)
+        return best
+
+    def _contains_whole_phrase(self, haystack: str, needle: str) -> bool:
+        """Word-boundary phrase match; treats hyphens/spaces as equivalent-ish."""
+        if not haystack or not needle:
+            return False
+        # Allow hyphen <-> space flexibility inside the needle
+        escaped = re.escape(needle)
+        escaped = escaped.replace(r"\-", r"[-\s]")
+        # word boundaries around the whole phrase
+        pattern = rf"(?<!\w){escaped}(?!\w)"
+        return re.search(pattern, haystack, flags=re.IGNORECASE) is not None
     
     def _score_term_overlap(self, search_terms: set, primary_terms: set,
                            all_terms: set) -> float:
@@ -2163,26 +2379,61 @@ class ConceptLinker:
         
         Returns 0-1 based on best match similarity.
         """
-        concept_lower = concept_name.lower().strip()
-        
-        # Extract candidate phrases from text (same length as concept)
-        words = text.lower().split()
-        concept_word_count = len(concept_lower.split())
-        
-        best_similarity = 0.0
-        
-        # Check n-grams of same length as concept
-        for i in range(len(words) - concept_word_count + 1):
-            phrase = ' '.join(words[i:i + concept_word_count])
-            
-            # Compute similarity (simple character-based)
-            similarity = self._string_similarity(concept_lower, phrase)
-            
-            if similarity > best_similarity:
-                best_similarity = similarity
-        
-        # Only return meaningful fuzzy matches (>= 80% similar)
-        return best_similarity if best_similarity >= 0.8 else 0.0
+        """
+        Improved fuzzy matching:
+        - operates on *tokens* and short phrases, not whole-text scanning only
+        - boosts acronym/alias near-misses (OCR errors)
+        - avoids matching generic single words too easily
+        """
+        text_norm = self._normalize_text(text)
+        if not text_norm:
+            return 0.0
+
+        parsed = self._parse_concept_name(concept_name)
+        main_terms = list(self._extract_terms(parsed.get("main", concept_name)))
+
+        # If single generic token (as per taxonomy stats), don't fuzzy-match it
+        # (prevents concepts like "Spread" from matching everywhere).
+        if len(main_terms) == 1 and self._is_generic_single_term(main_terms[0]):
+            return 0.0
+
+        # Build candidate tokens from text
+        words = re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)?", text_norm)
+        if not words:
+            return 0.0
+
+        best = 0.0
+
+        # 1) Acronym fuzzy (high value): compare against tokens directly
+        for ac in parsed.get("acronyms", set()):
+            ac_n = self._normalize_text(ac)
+            if not ac_n:
+                continue
+            for w in words:
+                sim = self._string_similarity(ac_n, w)
+                if sim >= 0.88:
+                    best = max(best, sim)
+
+        # 2) Term-level fuzzy: require at least 2 term hits for multi-term concepts
+        term_hits = 0
+        for t in main_terms:
+            t_n = self._normalize_text(t)
+            if not t_n:
+                continue
+            local_best = 0.0
+            for w in words:
+                # also allow hyphen/space variants by removing hyphens for similarity
+                sim = self._string_similarity(t_n.replace("-", ""), w.replace("-", ""))
+                local_best = max(local_best, sim)
+            if local_best >= 0.88:
+                term_hits += 1
+
+        if len(main_terms) >= 2 and term_hits >= 2:
+            best = max(best, 0.9)
+        elif len(main_terms) == 1 and term_hits == 1:
+            best = max(best, 0.82)
+
+        return best if best >= 0.8 else 0.0
     
     def _string_similarity(self, s1: str, s2: str) -> float:
         """
