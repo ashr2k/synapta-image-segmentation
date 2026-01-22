@@ -404,12 +404,20 @@ Based on the classification, extract type-specific metadata:
 **FORMULAS:**
 - Extract mathematical expressions/equations/formulas that are visible in the image OR can be inferred from context
 - Look for: equals signs (=), mathematical operators (+, -, *, /, ^), mathematical notation
+- **CRITICAL: The "formula" field MUST contain the ACTUAL MATHEMATICAL EXPRESSION, not just the formula name**
+  * If formula is visible: Extract the exact mathematical notation (e.g., "C = S₀N(d₁) - Xe^(-rT)N(d₂)")
+  * If formula is NOT visible but can be inferred: Provide the standard mathematical formula for the domain
+    - For Black-Scholes: "C = S₀N(d₁) - Xe^(-rT)N(d₂)" where d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T) and d₂ = d₁ - σ√T
+    - For Binomial: Describe the recursive formula structure
+    - For other domains: Provide the standard mathematical expression
+- Format: {{"formula": "ACTUAL MATHEMATICAL EXPRESSION (e.g., C = S₀N(d₁) - Xe^(-rT)N(d₂))", "description": "what it calculates", "location": "where found or 'inferred from domain knowledge'"}}
 - If formulas are NOT explicitly visible but you can infer them from:
   * Input variables and output values shown in the image
   * Context from nearby text (OCR text provided)
   * Standard formulas for the domain (e.g., Black-Scholes for option pricing, present value formulas for finance)
-  * Then INFER and include the formula with description indicating it was inferred
+  * Then INFER and include the COMPLETE MATHEMATICAL FORMULA with description indicating it was inferred
 - IMPORTANT: You may INFER formulas based on context, but DO NOT infer or create new variables or values - only use variables and values that are explicitly shown in the image
+- **DO NOT use placeholder text like "Black-Scholes-Merton formula" - provide the actual equation**
 
 **VARIABLES:**
 - ONLY extract if the image explicitly shows variable definitions/meanings
@@ -459,18 +467,35 @@ Based on the classification, extract type-specific metadata:
 - contains_image: boolean
 
 ## PART 3: EDUCATIONAL SUMMARY
-Provide a 3-5 sentence educational summary that would help a student understand this visual without seeing it.
+Provide a comprehensive educational summary that would help a student understand this visual without seeing it. For images with calculations, provide an exhaustive summary (8-10+ sentences) covering all inputs, formulas, and outputs in detail.
 
 **For CHART:** Describe chart type, variables plotted, key trends, data range, notable features
 **For FLOWCHART:** Describe the decision process, main stages, flow logic, decision points, outcomes
 **For DIAGRAM:** Describe the purpose, main components, relationships, structure, key insights
-**For IMAGE:** Describe main subject, key visual elements. If present: mention definitions shown, formulas visible (with their exact notation), variables explained, table structures. If calculation extraction was performed: explain the input variables extracted, formulas identified (including inferred ones), output values found, and verification results. Focus on factual description of visible content. DO NOT describe definitions/variables/tables if they are not actually visible.
+**For IMAGE:** Provide an EXHAUSTIVE summary that tells the complete story:
+  1. **Introduction**: What is the main subject/purpose of this image? (e.g., "This image shows an option pricing spreadsheet...")
+  2. **Input Variables Section**: List ALL input variables with their values and units. Format: "The inputs include: [variable name] = [value] [unit], [variable name] = [value] [unit], ..."
+  3. **Formulas Section**: Explicitly state ALL formulas used, with their complete mathematical notation. Format: "The calculations use the following formulas: [formula 1 with full mathematical expression], [formula 2 with full mathematical expression], ..."
+  4. **Output Values Section**: List ALL output values with their locations. Format: "The calculated outputs are: [output name] = [value] (located at [location]), [output name] = [value] (located at [location]), ..."
+  5. **Relationship**: Explain how the inputs, formulas, and outputs relate to each other (e.g., "Using the input values and the Black-Scholes formula, the spreadsheet calculates...")
+  6. **Additional Context**: Mention any other relevant details (definitions, tables, instructions, etc.) if present
+
+**Summary Structure for IMAGE with calculations:**
+- Start with a sentence describing what the image shows
+- Then provide a detailed paragraph listing ALL input variables with their values
+- Then provide a detailed paragraph stating ALL formulas with their complete mathematical expressions
+- Then provide a detailed paragraph listing ALL output values with their locations
+- Then explain the relationship between inputs, formulas, and outputs
+- Conclude with any additional relevant information
 **For FIGURE:** Describe the content type, main elements, purpose, key takeaway
 
 **Summary Rules:**
-- Only mention definitions/variables/tables if they are ACTUALLY visible in the image
-- If the image has no formulas, you may mention formulas what you inferred based on earlier context in the summary
-- Be specific and factual - describe what you see
+- Be EXHAUSTIVE - include every input variable, every formula (with full mathematical notation), and every output value
+- For formulas: Always include the complete mathematical expression, not just the formula name
+- For inputs: List variable name, value, and unit for each
+- For outputs: List output name, value, and location for each
+- Write in a clear, educational style that tells the complete story from inputs → formulas → outputs
+- Minimum 8-10 sentences for images with calculations
 
 ---
 
@@ -483,15 +508,15 @@ Provide a 3-5 sentence educational summary that would help a student understand 
   "metadata": {{
     // Include ALL relevant fields from Part 2 based on classification
     // For IMAGE type:
-    //   - formulas: [] if no formulas visible/inferrable, otherwise array of {{formula (also include inferred ones), description, location}}
+    //   - formulas: [] if no formulas visible/inferrable, otherwise array of {{formula (MUST be actual mathematical expression, e.g., "C = S₀N(d₁) - Xe^(-rT)N(d₂)"), description, location}}
     //   - variables: [] if no variable meanings shown, otherwise array of {{variable, meaning}}
     //   - tables: [] if no table visible, otherwise array of table objects
     //   - input_variables: [] if no inputs visible, otherwise array of {{variable, value, unit}}
     //   - output_values: [] if no outputs visible, otherwise array of {{output_name, value, location}}
-    // CRITICAL: For variables/values - only include what is LITERALLY VISIBLE. For formulas - may infer from context.
+    // CRITICAL: For variables/values - only include what is LITERALLY VISIBLE. For formulas - may infer from context but MUST provide complete mathematical expression.
   }},
   "summary": {{
-    "text": "3-5 sentence educational summary describing only what is visible",
+    "text": "Comprehensive educational summary (8-10+ sentences for images with calculations). Must include: introduction, ALL input variables with values, ALL formulas with complete mathematical expressions, ALL output values with locations, relationship explanation, and additional context.",
     "confidence": 0.0-1.0
   }}
 }}
@@ -546,7 +571,37 @@ Example 3 - Image with formula and variable legend:
   }}
 }}
 
-Example 4 - Plain screenshot with no special content:
+Example 4 - Option pricing spreadsheet (inferred formulas):
+{{
+  "metadata": {{
+    "definitions": [],
+    "formulas": [
+      {{"formula": "C = S₀N(d₁) - Xe^(-rT)N(d₂)", "description": "Black-Scholes call option price formula", "location": "inferred from domain knowledge"}},
+      {{"formula": "P = Xe^(-rT)N(-d₂) - S₀N(-d₁)", "description": "Black-Scholes put option price formula", "location": "inferred from domain knowledge"}},
+      {{"formula": "d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T)", "description": "d₁ parameter for Black-Scholes", "location": "inferred from domain knowledge"}},
+      {{"formula": "d₂ = d₁ - σ√T", "description": "d₂ parameter for Black-Scholes", "location": "inferred from domain knowledge"}}
+    ],
+    "variables": [],
+    "tables": [],
+    "input_variables": [
+      {{"variable": "Asset price (S₀)", "value": "125.94", "unit": ""}},
+      {{"variable": "Exercise price (X)", "value": "125", "unit": ""}},
+      {{"variable": "Time to expiration (T)", "value": "0.0959", "unit": "years"}},
+      {{"variable": "Standard deviation (σ)", "value": "83.00", "unit": "%"}},
+      {{"variable": "Risk-free rate (r)", "value": "4.56", "unit": "%"}}
+    ],
+    "output_values": [
+      {{"output_name": "Call Price (Black-Scholes-Merton)", "value": "13.5589", "location": "Black-Scholes-Merton Model, Call column"}},
+      {{"output_name": "Put Price (Black-Scholes-Merton)", "value": "12.0734", "location": "Black-Scholes-Merton Model, Put column"}}
+    ]
+  }},
+  "summary": {{
+    "text": "This image shows an option pricing spreadsheet using the Black-Scholes-Merton and Binomial models. The inputs include: Asset price (S₀) = 125.94, Exercise price (X) = 125, Time to expiration (T) = 0.0959 years, Standard deviation (σ) = 83.00%, Risk-free rate (r) = 4.56%, and Dividends = 0.00%. The calculations use the following formulas: C = S₀N(d₁) - Xe^(-rT)N(d₂) for call options, P = Xe^(-rT)N(-d₂) - S₀N(-d₁) for put options, where d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T) and d₂ = d₁ - σ√T. The calculated outputs are: Call Price (Black-Scholes-Merton) = 13.5589 (located at Black-Scholes-Merton Model, Call column), Put Price (Black-Scholes-Merton) = 12.0734 (located at Black-Scholes-Merton Model, Put column), Call Price (Binomial) = 13.5529 (located at Binomial Model, Call column), Put Price (Binomial) = 12.0704 (located at Binomial Model, Put column), along with various Greeks such as Delta, Gamma, Theta, Vega, and Rho for both call and put options. Using the input values and the Black-Scholes formula, the spreadsheet calculates the theoretical option prices and risk sensitivities. The image also includes instructions for inputting continuous yield and discrete dividends.",
+    "confidence": 0.95
+  }}
+}}
+
+Example 5 - Plain screenshot with no special content:
 {{
   "metadata": {{
     "definitions": [],
@@ -902,7 +957,13 @@ Provide ONLY the Mermaid code block, no additional explanation."""
   * Input/output relationships
   * Context from nearby text
   * Domain knowledge (e.g., Black-Scholes for option pricing)
-- Format: {{"formula": "formula", "description": "what it calculates", "location": "where found or 'inferred'"}}
+- **CRITICAL: The "formula" field MUST contain the ACTUAL MATHEMATICAL EXPRESSION, not just the formula name**
+  * If formula is visible: Extract the exact mathematical notation (e.g., "C = S₀N(d₁) - Xe^(-rT)N(d₂)")
+  * If formula is NOT visible but can be inferred: Provide the standard mathematical formula for the domain
+    - For Black-Scholes: "C = S₀N(d₁) - Xe^(-rT)N(d₂)" where d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T) and d₂ = d₁ - σ√T
+    - For other domains: Provide the standard mathematical expression
+- Format: {{"formula": "ACTUAL MATHEMATICAL EXPRESSION (e.g., C = S₀N(d₁) - Xe^(-rT)N(d₂))", "description": "what it calculates", "location": "where found or 'inferred from domain knowledge'"}}
+- **DO NOT use placeholder text like "Black-Scholes-Merton formula" - provide the actual equation**
 
 **VERIFICATION:**
 - Compare output values with expected calculations using inputs and formulas

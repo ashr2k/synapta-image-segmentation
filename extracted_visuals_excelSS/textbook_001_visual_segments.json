@@ -1182,37 +1182,27 @@
         "definitions": [],
         "formulas": [
           {
-            "formula": "Black-Scholes-Merton formula",
-            "description": "Used for option pricing",
-            "location": "inferred from context"
+            "formula": "C = S₀N(d₁) - Xe^(-rT)N(d₂)",
+            "description": "Black-Scholes call option price formula",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "P = Xe^(-rT)N(-d₂) - S₀N(-d₁)",
+            "description": "Black-Scholes put option price formula",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T)",
+            "description": "d₁ parameter for Black-Scholes",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "d₂ = d₁ - σ√T",
+            "description": "d₂ parameter for Black-Scholes",
+            "location": "inferred from domain knowledge"
           }
         ],
-        "variables": [
-          {
-            "variable": "Asset price (S₀)",
-            "meaning": "Current price of the asset"
-          },
-          {
-            "variable": "Exercise price (X)",
-            "meaning": "Price at which the option can be exercised"
-          },
-          {
-            "variable": "Time to expiration (T)",
-            "meaning": "Time until the option expires"
-          },
-          {
-            "variable": "Standard deviation (σ)",
-            "meaning": "Volatility of the asset's price"
-          },
-          {
-            "variable": "Risk-free rate (r)",
-            "meaning": "Risk-free interest rate"
-          },
-          {
-            "variable": "Dividends",
-            "meaning": "Dividends paid by the asset"
-          }
-        ],
+        "variables": [],
         "tables": [],
         "input_variables": [
           {
@@ -1239,11 +1229,6 @@
             "variable": "Risk-free rate (r)",
             "value": "4.56",
             "unit": "%"
-          },
-          {
-            "variable": "Dividends",
-            "value": "0.00",
-            "unit": ""
           }
         ],
         "output_values": [
@@ -1384,8 +1369,8 @@
       },
       "classification_confidence": 0.95,
       "classification_method": "mistral_vision_comprehensive",
-      "summary": "This image is a screenshot of an option pricing spreadsheet using the Black-Scholes-Merton and Binomial models. It includes input variables such as asset price, exercise price, time to expiration, standard deviation, risk-free rate, and dividends. The spreadsheet calculates the call and put prices for both models and displays the results. The image also includes instructions for inputting continuous yield and discrete dividends.",
-      "summary_confidence": 1.0,
+      "summary": "This image shows an option pricing spreadsheet using the Black-Scholes-Merton and Binomial models. The inputs include: Asset price (S₀) = 125.94, Exercise price (X) = 125, Time to expiration (T) = 0.0959 years, Standard deviation (σ) = 83.00%, Risk-free rate (r) = 4.56%, and Dividends = 0.00%. The calculations use the following formulas: C = S₀N(d₁) - Xe^(-rT)N(d₂) for call options, P = Xe^(-rT)N(-d₂) - S₀N(-d₁) for put options, where d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T) and d₂ = d₁ - σ√T. The calculated outputs are: Call Price (Black-Scholes-Merton) = 13.5589 (located at Black-Scholes-Merton Model, Call column), Put Price (Black-Scholes-Merton) = 12.0734 (located at Black-Scholes-Merton Model, Put column), Call Price (Binomial) = 13.5529 (located at Binomial Model, Call column), Put Price (Binomial) = 12.0704 (located at Binomial Model, Put column), along with various Greeks such as Delta, Gamma, Theta, Vega, and Rho for both call and put options. Using the input values and the Black-Scholes formula, the spreadsheet calculates the theoretical option prices and risk sensitivities. The image also includes instructions for inputting continuous yield and discrete dividends.",
+      "summary_confidence": 0.95,
       "linked_concept_ids": [
         {
           "concept_id": "concept_risk_free_rate_007",
@@ -1393,13 +1378,29 @@
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.72269272618429,
+          "confidence": 0.7130112536132148,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 6.769272618429001,
+            "cosine_similarity": 5.801125361321492,
             "term_overlap": 25.0,
             "fuzzy_match": 9.0,
+            "context_bonus": 1.5
+          }
+        },
+        {
+          "concept_id": "concept_vega_231",
+          "concept_name": "Vega",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.7034094567289375,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 3.84094567289376,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
             "context_bonus": 1.5
           }
         },
@@ -1409,11 +1410,11 @@
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.7073944050439371,
+          "confidence": 0.69918580731878,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 5.739440504393716,
+            "cosine_similarity": 4.918580731877997,
             "term_overlap": 25.0,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1425,11 +1426,11 @@
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.6973944050439371,
+          "confidence": 0.68918580731878,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 5.739440504393716,
+            "cosine_similarity": 4.918580731877997,
             "term_overlap": 25.0,
             "fuzzy_match": 9.0,
             "context_bonus": 0.0
@@ -1441,27 +1442,11 @@
           "bloom_level": 3,
           "tag": "",
           "pages": "",
-          "confidence": 0.6696085723965992,
+          "confidence": 0.6884094567289375,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 1.960857239659912,
-            "term_overlap": 25.0,
-            "fuzzy_match": 10.0,
-            "context_bonus": 0.0
-          }
-        },
-        {
-          "concept_id": "concept_vega_231",
-          "concept_name": "Vega",
-          "bloom_level": 3,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.6696085723965992,
-          "match_method": "exact_phrase_match",
-          "match_details": {
-            "exact_phrase": 30.0,
-            "cosine_similarity": 1.960857239659912,
+            "cosine_similarity": 3.84094567289376,
             "term_overlap": 25.0,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1473,11 +1458,11 @@
           "bloom_level": 3,
           "tag": "",
           "pages": "",
-          "confidence": 0.6696085723965992,
+          "confidence": 0.6884094567289375,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 1.960857239659912,
+            "cosine_similarity": 3.84094567289376,
             "term_overlap": 25.0,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1489,11 +1474,11 @@
           "bloom_level": 3,
           "tag": "",
           "pages": "",
-          "confidence": 0.6445068906058594,
+          "confidence": 0.6379193961374413,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 4.605967284599099,
+            "cosine_similarity": 3.947217837757286,
             "term_overlap": 19.844721775986844,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1505,11 +1490,11 @@
           "bloom_level": 3,
           "tag": "",
           "pages": "",
-          "confidence": 0.6431393659756662,
+          "confidence": 0.6365518715072481,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 4.605967284599099,
+            "cosine_similarity": 3.947217837757286,
             "term_overlap": 19.70796931296753,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1521,11 +1506,11 @@
           "bloom_level": 4,
           "tag": "",
           "pages": "",
-          "confidence": 0.5671722607805835,
+          "confidence": 0.563920225823526,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 2.273818474139336,
+            "cosine_similarity": 1.9486149784335778,
             "term_overlap": 14.443407603919015,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1537,11 +1522,11 @@
           "bloom_level": 2,
           "tag": "",
           "pages": "",
-          "confidence": 0.5295324019025796,
+          "confidence": 0.527673278082241,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 1.2998968781760487,
+            "cosine_similarity": 1.1139844961421834,
             "term_overlap": 11.653343312081912,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1553,11 +1538,11 @@
           "bloom_level": 2,
           "tag": "",
           "pages": "",
-          "confidence": 0.5295324019025796,
+          "confidence": 0.527673278082241,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 1.2998968781760487,
+            "cosine_similarity": 1.1139844961421834,
             "term_overlap": 11.653343312081912,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1569,11 +1554,11 @@
           "bloom_level": 4,
           "tag": "",
           "pages": "",
-          "confidence": 0.5235844964917533,
+          "confidence": 0.520966661099302,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 1.8303869903654268,
+            "cosine_similarity": 1.5686034511202873,
             "term_overlap": 10.52806265880991,
             "fuzzy_match": 10.0,
             "context_bonus": 0.0
@@ -1596,37 +1581,27 @@
         "definitions": [],
         "formulas": [
           {
-            "formula": "Black-Scholes-Merton formula",
-            "description": "Used for option pricing",
-            "location": "inferred from context"
+            "formula": "C = S₀N(d₁) - Xe^(-rT)N(d₂)",
+            "description": "Black-Scholes call option price formula",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "P = Xe^(-rT)N(-d₂) - S₀N(-d₁)",
+            "description": "Black-Scholes put option price formula",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "d₁ = (ln(S₀/X) + (r + σ²/2)T) / (σ√T)",
+            "description": "d₁ parameter for Black-Scholes",
+            "location": "inferred from domain knowledge"
+          },
+          {
+            "formula": "d₂ = d₁ - σ√T",
+            "description": "d₂ parameter for Black-Scholes",
+            "location": "inferred from domain knowledge"
           }
         ],
-        "variables": [
-          {
-            "variable": "Asset price (S₀)",
-            "meaning": "Current price of the asset"
-          },
-          {
-            "variable": "Exercise price (X)",
-            "meaning": "Price at which the option can be exercised"
-          },
-          {
-            "variable": "Time to expiration (T)",
-            "meaning": "Time until the option expires"
-          },
-          {
-            "variable": "Standard deviation (σ)",
-            "meaning": "Volatility of the asset's price"
-          },
-          {
-            "variable": "Risk-free rate (r)",
-            "meaning": "Risk-free interest rate"
-          },
-          {
-            "variable": "Dividends",
-            "meaning": "Dividends paid by the asset"
-          }
-        ],
+        "variables": [],
         "tables": [],
         "input_variables": [
           {
@@ -1653,11 +1628,6 @@
             "variable": "Risk-free rate (r)",
             "value": "4.56",
             "unit": "%"
-          },
-          {
-            "variable": "Dividends",
-            "value": "0.00",
-            "unit": ""
           }
         ],
         "output_values": [
