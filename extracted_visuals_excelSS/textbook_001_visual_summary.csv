@@ -1,7 +1,7 @@
 segment_id,page,type,confidence,figure_number,caption,ocr_text,linked_concepts,summary
-textbook_001_p000_61f12f4c,1,image,0.90,,Now let us calculate an option price. Assume that you want to find the binomial price of the option ,"Black-Scholes-Merton and Binomial
+textbook_001_p000_61f12f4c,1,image,0.95,,Now let us calculate an option price. Assume that you want to find the binomial price of the option ,"Black-Scholes-Merton and Binomial
 Option Pricing
 10e
 Inputs:
 Black-Scholes-Merton Model
-Binomial Mod",8,This image is a screenshot of a spreadsheet comparing the Black-Scholes-Merton and Binomial option p
+Binomial Mod",12,This image is a screenshot of an option pricing spreadsheet using the Black-Scholes-Merton and Binom

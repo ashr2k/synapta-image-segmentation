@@ -1173,40 +1173,102 @@
       "chart_data": null,
       "diagram_data": null,
       "image_data": {
-        "image_subtype": "embedded_table",
-        "contains_text": true,
-        "text_density": "dense",
-        "is_embedded_table": true,
+        "image_subtype": null,
+        "contains_text": false,
+        "text_density": "none",
+        "is_embedded_table": false,
         "dominant_colors": [],
         "estimated_content_type": null,
         "definitions": [],
-        "formulas": [],
-        "variables": [],
-        "tables": [
+        "formulas": [
           {
-            "description": "Comparison of Black-Scholes-Merton and Binomial option pricing models",
-            "rows": 15,
-            "columns": 10,
-            "headers": [
-              "Asset price (Sq)",
-              "Exercise price (X)",
-              "Time to expiration (T)",
-              "Standard deviation (σ)",
-              "Risk-free rate (r)",
-              "Dividends",
-              "Continuous yield (q)",
-              "Delta (Δ)",
-              "Gamma (Γ)",
-              "Theta (Θ)",
-              "Vega (v)",
-              "Rho (ρ)",
-              "PV of divs",
-              "PV of strike",
-              "S - PV divs"
-            ],
-            "content_summary": "Contains inputs and outputs for option pricing models, including asset price, exercise price, time to expiration, and various Greek letters representing sensitivity measures."
+            "formula": "Black-Scholes-Merton formula",
+            "description": "Used for option pricing",
+            "location": "inferred from context"
           }
-        ]
+        ],
+        "variables": [
+          {
+            "variable": "Asset price (S₀)",
+            "meaning": "Current price of the asset"
+          },
+          {
+            "variable": "Exercise price (X)",
+            "meaning": "Price at which the option can be exercised"
+          },
+          {
+            "variable": "Time to expiration (T)",
+            "meaning": "Time until the option expires"
+          },
+          {
+            "variable": "Standard deviation (σ)",
+            "meaning": "Volatility of the asset's price"
+          },
+          {
+            "variable": "Risk-free rate (r)",
+            "meaning": "Risk-free interest rate"
+          },
+          {
+            "variable": "Dividends",
+            "meaning": "Dividends paid by the asset"
+          }
+        ],
+        "tables": [],
+        "input_variables": [
+          {
+            "variable": "Asset price (S₀)",
+            "value": "125.94",
+            "unit": ""
+          },
+          {
+            "variable": "Exercise price (X)",
+            "value": "125",
+            "unit": ""
+          },
+          {
+            "variable": "Time to expiration (T)",
+            "value": "0.0959",
+            "unit": "years"
+          },
+          {
+            "variable": "Standard deviation (σ)",
+            "value": "83.00",
+            "unit": "%"
+          },
+          {
+            "variable": "Risk-free rate (r)",
+            "value": "4.56",
+            "unit": "%"
+          },
+          {
+            "variable": "Dividends",
+            "value": "0.00",
+            "unit": ""
+          }
+        ],
+        "output_values": [
+          {
+            "output_name": "Call Price (Black-Scholes-Merton)",
+            "value": "13.5589",
+            "location": "Black-Scholes-Merton Model, Call column"
+          },
+          {
+            "output_name": "Put Price (Black-Scholes-Merton)",
+            "value": "12.0734",
+            "location": "Black-Scholes-Merton Model, Put column"
+          },
+          {
+            "output_name": "Call Price (Binomial)",
+            "value": "13.5529",
+            "location": "Binomial Model, Call column"
+          },
+          {
+            "output_name": "Put Price (Binomial)",
+            "value": "12.0704",
+            "location": "Binomial Model, Put column"
+          }
+        ],
+        "calculation_verification": null
       },
       "figure_data": null,
       "extracted_text_structured": {
@@ -1320,105 +1382,25 @@
           "discrete dividends are disregarded."
         ]
       },
-      "classification_confidence": 0.9,
+      "classification_confidence": 0.95,
       "classification_method": "mistral_vision_comprehensive",
-      "summary": "This image is a screenshot of a spreadsheet comparing the Black-Scholes-Merton and Binomial option pricing models. It includes inputs such as asset price, exercise price, time to expiration, and standard deviation, along with outputs like price, delta, gamma, theta, vega, and rho. The table also shows the present value of dividends and the strike price. The data is organized into columns with headers and rows of numerical values.",
-      "summary_confidence": 0.9,
+      "summary": "This image is a screenshot of an option pricing spreadsheet using the Black-Scholes-Merton and Binomial models. It includes input variables such as asset price, exercise price, time to expiration, standard deviation, risk-free rate, and dividends. The spreadsheet calculates the call and put prices for both models and displays the results. The image also includes instructions for inputting continuous yield and discrete dividends.",
+      "summary_confidence": 1.0,
       "linked_concept_ids": [
-        {
-          "concept_id": "concept_option_pricing_model_025",
-          "concept_name": "Option Pricing Model",
-          "bloom_level": 1,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.722877339749851,
-          "match_method": "exact_phrase_match",
-          "match_details": {
-            "exact_phrase": 30.0,
-            "cosine_similarity": 6.263924451175582,
-            "term_overlap": 25.0,
-            "fuzzy_match": 9.523809523809524,
-            "context_bonus": 1.5
-          }
-        },
-        {
-          "concept_id": "concept_vega_231",
-          "concept_name": "Vega",
-          "bloom_level": 3,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.7100776525179043,
-          "match_method": "exact_phrase_match",
-          "match_details": {
-            "exact_phrase": 30.0,
-            "cosine_similarity": 4.507765251790432,
-            "term_overlap": 25.0,
-            "fuzzy_match": 10.0,
-            "context_bonus": 1.5
-          }
-        },
         {
           "concept_id": "concept_risk_free_rate_007",
           "concept_name": "Risk-Free Rate",
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.6726838823915537,
+          "confidence": 0.72269272618429,
           "match_method": "exact_phrase_match",
           "match_details": {
             "exact_phrase": 30.0,
-            "cosine_similarity": 2.2683882391553807,
+            "cosine_similarity": 6.769272618429001,
             "term_overlap": 25.0,
-            "fuzzy_match": 10.0,
-            "context_bonus": 0.0
-          }
-        },
-        {
-          "concept_id": "concept_risk_free_rate_027",
-          "concept_name": "Risk-Free Rate",
-          "bloom_level": 1,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.6726838823915537,
-          "match_method": "exact_phrase_match",
-          "match_details": {
-            "exact_phrase": 30.0,
-            "cosine_similarity": 2.2683882391553807,
-            "term_overlap": 25.0,
-            "fuzzy_match": 10.0,
-            "context_bonus": 0.0
-          }
-        },
-        {
-          "concept_id": "concept_binomial_put_pricing_222",
-          "concept_name": "Binomial Put Pricing",
-          "bloom_level": 3,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.4017811368910305,
-          "match_method": "term_overlap",
-          "match_details": {
-            "exact_phrase": 0.0,
-            "cosine_similarity": 6.340904386777468,
-            "term_overlap": 25.0,
-            "fuzzy_match": 8.837209302325581,
-            "context_bonus": 0.0
-          }
-        },
-        {
-          "concept_id": "concept_expiration_date_024",
-          "concept_name": "Expiration date",
-          "bloom_level": 1,
-          "tag": "",
-          "pages": "",
-          "confidence": 0.3694276793528075,
-          "match_method": "term_overlap",
-          "match_details": {
-            "exact_phrase": 0.0,
-            "cosine_similarity": 3.666905866315232,
-            "term_overlap": 25.0,
-            "fuzzy_match": 8.275862068965518,
-            "context_bonus": 0.0
+            "fuzzy_match": 9.0,
+            "context_bonus": 1.5
           }
         },
         {
@@ -1427,13 +1409,13 @@
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.32096755743201727,
-          "match_method": "term_overlap",
+          "confidence": 0.7073944050439371,
+          "match_method": "exact_phrase_match",
           "match_details": {
-            "exact_phrase": 0.0,
-            "cosine_similarity": 7.0967557432017285,
+            "exact_phrase": 30.0,
+            "cosine_similarity": 5.739440504393716,
             "term_overlap": 25.0,
-            "fuzzy_match": 0.0,
+            "fuzzy_match": 10.0,
             "context_bonus": 0.0
           }
         },
@@ -1443,13 +1425,157 @@
           "bloom_level": 1,
           "tag": "",
           "pages": "",
-          "confidence": 0.32096755743201727,
-          "match_method": "term_overlap",
+          "confidence": 0.6973944050439371,
+          "match_method": "exact_phrase_match",
           "match_details": {
-            "exact_phrase": 0.0,
-            "cosine_similarity": 7.0967557432017285,
+            "exact_phrase": 30.0,
+            "cosine_similarity": 5.739440504393716,
             "term_overlap": 25.0,
-            "fuzzy_match": 0.0,
+            "fuzzy_match": 9.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_rho_rho_230",
+          "concept_name": "Rho ($\\rho$)",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6696085723965992,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.960857239659912,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_vega_231",
+          "concept_name": "Vega",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6696085723965992,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.960857239659912,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_theta_theta_232",
+          "concept_name": "Theta ($\\Theta$)",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6696085723965992,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.960857239659912,
+            "term_overlap": 25.0,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_effect_of_exercise_price_put_214",
+          "concept_name": "Effect of exercise price (Put)",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6445068906058594,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 4.605967284599099,
+            "term_overlap": 19.844721775986844,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_effect_of_exercise_price_call_213",
+          "concept_name": "Effect of exercise price (Call)",
+          "bloom_level": 3,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.6431393659756662,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 4.605967284599099,
+            "term_overlap": 19.70796931296753,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_put_call_parity_european_316",
+          "concept_name": "Put-Call Parity (European)",
+          "bloom_level": 4,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.5671722607805835,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 2.273818474139336,
+            "term_overlap": 14.443407603919015,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_maximum_value_of_a_put_american_125",
+          "concept_name": "Maximum value of a Put (American)",
+          "bloom_level": 2,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.5295324019025796,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.2998968781760487,
+            "term_overlap": 11.653343312081912,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_maximum_value_of_a_put_european_126",
+          "concept_name": "Maximum value of a Put (European)",
+          "bloom_level": 2,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.5295324019025796,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.2998968781760487,
+            "term_overlap": 11.653343312081912,
+            "fuzzy_match": 10.0,
+            "context_bonus": 0.0
+          }
+        },
+        {
+          "concept_id": "concept_put_call_parity_inequalities_american_318",
+          "concept_name": "Put-Call Parity inequalities (American)",
+          "bloom_level": 4,
+          "tag": "",
+          "pages": "",
+          "confidence": 0.5235844964917533,
+          "match_method": "exact_phrase_match",
+          "match_details": {
+            "exact_phrase": 30.0,
+            "cosine_similarity": 1.8303869903654268,
+            "term_overlap": 10.52806265880991,
+            "fuzzy_match": 10.0,
             "context_bonus": 0.0
           }
         }
@@ -1461,40 +1587,102 @@
       "confidence": 1.0,
       "notes": "Validation: good_size, substantial_dimensions, good_aspect_ratio, good_position, good_content_variance",
       "image_details": {
-        "subtype": "embedded_table",
-        "contains_text": true,
-        "text_density": "dense",
-        "is_embedded_table": true,
+        "subtype": null,
+        "contains_text": false,
+        "text_density": "none",
+        "is_embedded_table": false,
         "content_type": null,
         "dominant_colors": [],
         "definitions": [],
-        "formulas": [],
-        "variables": [],
-        "tables": [
+        "formulas": [
           {
-            "description": "Comparison of Black-Scholes-Merton and Binomial option pricing models",
-            "rows": 15,
-            "columns": 10,
-            "headers": [
-              "Asset price (Sq)",
-              "Exercise price (X)",
-              "Time to expiration (T)",
-              "Standard deviation (σ)",
-              "Risk-free rate (r)",
-              "Dividends",
-              "Continuous yield (q)",
-              "Delta (Δ)",
-              "Gamma (Γ)",
-              "Theta (Θ)",
-              "Vega (v)",
-              "Rho (ρ)",
-              "PV of divs",
-              "PV of strike",
-              "S - PV divs"
-            ],
-            "content_summary": "Contains inputs and outputs for option pricing models, including asset price, exercise price, time to expiration, and various Greek letters representing sensitivity measures."
+            "formula": "Black-Scholes-Merton formula",
+            "description": "Used for option pricing",
+            "location": "inferred from context"
           }
-        ]
+        ],
+        "variables": [
+          {
+            "variable": "Asset price (S₀)",
+            "meaning": "Current price of the asset"
+          },
+          {
+            "variable": "Exercise price (X)",
+            "meaning": "Price at which the option can be exercised"
+          },
+          {
+            "variable": "Time to expiration (T)",
+            "meaning": "Time until the option expires"
+          },
+          {
+            "variable": "Standard deviation (σ)",
+            "meaning": "Volatility of the asset's price"
+          },
+          {
+            "variable": "Risk-free rate (r)",
+            "meaning": "Risk-free interest rate"
+          },
+          {
+            "variable": "Dividends",
+            "meaning": "Dividends paid by the asset"
+          }
+        ],
+        "tables": [],
+        "input_variables": [
+          {
+            "variable": "Asset price (S₀)",
+            "value": "125.94",
+            "unit": ""
+          },
+          {
+            "variable": "Exercise price (X)",
+            "value": "125",
+            "unit": ""
+          },
+          {
+            "variable": "Time to expiration (T)",
+            "value": "0.0959",
+            "unit": "years"
+          },
+          {
+            "variable": "Standard deviation (σ)",
+            "value": "83.00",
+            "unit": "%"
+          },
+          {
+            "variable": "Risk-free rate (r)",
+            "value": "4.56",
+            "unit": "%"
+          },
+          {
+            "variable": "Dividends",
+            "value": "0.00",
+            "unit": ""
+          }
+        ],
+        "output_values": [
+          {
+            "output_name": "Call Price (Black-Scholes-Merton)",
+            "value": "13.5589",
+            "location": "Black-Scholes-Merton Model, Call column"
+          },
+          {
+            "output_name": "Put Price (Black-Scholes-Merton)",
+            "value": "12.0734",
+            "location": "Black-Scholes-Merton Model, Put column"
+          },
+          {
+            "output_name": "Call Price (Binomial)",
+            "value": "13.5529",
+            "location": "Binomial Model, Call column"
+          },
+          {
+            "output_name": "Put Price (Binomial)",
+            "value": "12.0704",
+            "location": "Binomial Model, Put column"
+          }
+        ],
+        "calculation_verification": null
       }
     }
   ]

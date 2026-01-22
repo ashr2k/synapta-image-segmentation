@@ -84,6 +84,10 @@ class ImageSpecificData:
     formulas: List[Dict[str, str]] = field(default_factory=list)  # [{"formula": "...", "description": "...", "location": "..."}]
     variables: List[Dict[str, str]] = field(default_factory=list)  # [{"variable": "...", "meaning": "..."}]
     tables: List[Dict[str, Any]] = field(default_factory=list)  # [{"description": "...", "rows": N, "columns": N, "content_summary": "..."}]
+        # NEW FIELDS for calculation extraction and verification
+    input_variables: List[Dict[str, Any]] = field(default_factory=list)  # [{"variable": "...", "value": "...", "unit": "..."}]
+    output_values: List[Dict[str, Any]] = field(default_factory=list)  # [{"output_name": "...", "value": "...", "location": "..."}]
+    calculation_verification: Optional[Dict[str, Any]] = None  # {"verified": bool, "matches": bool, "differences": [...]}
 
 @dataclass
 class FigureSpecificData:
@@ -266,7 +270,11 @@ class VisualSegment:
                 'definitions': self.image_data.definitions,
                 'formulas': self.image_data.formulas,
                 'variables': self.image_data.variables,
-                'tables': self.image_data.tables
+                'tables': self.image_data.tables,
+                # NEW FIELDS for calculation extraction
+                'input_variables': self.image_data.input_variables,
+                'output_values': self.image_data.output_values,
+                'calculation_verification': self.image_data.calculation_verification
             }
         
         if self.figure_data:
@@ -381,6 +389,8 @@ Based on the classification, extract type-specific metadata:
 - formulas: array of {{"formula": "string", "description": "string", "location": "string"}}
 - variables: array of {{"variable": "string", "meaning": "string"}}
 - tables: array of {{"description": "string", "rows": integer, "columns": integer, "headers": array, "content_summary": "string"}}
+- input_variables: array of {{"variable": "string", "value": "string|number", "unit": "string"}} - Extract input variables and their values shown in the image
+- output_values: array of {{"output_name": "string", "value": "string|number", "location": "string"}} - Extract calculated output values shown in the image
 
 **CRITICAL RULES for IMAGE metadata extraction:**
 
@@ -392,24 +402,14 @@ Based on the classification, extract type-specific metadata:
 - If NO definitions are visible, return empty array: []
 
 **FORMULAS:**
-- ONLY extract if you can SEE mathematical expressions/equations/formulas in the image
+- Extract mathematical expressions/equations/formulas that are visible in the image OR can be inferred from context
 - Look for: equals signs (=), mathematical operators (+, -, *, /, ^), mathematical notation
-- Must contain actual mathematical symbols - not just words describing math
-- For location:
-  * If in a table cell, specify EXACT cell reference you can see (e.g., "cell A1", "row 2, column 3")
-  * If cell reference is NOT visible, use descriptive location (e.g., "top-left cell", "third row, second column")
-  * If in equation box or standalone, describe position (e.g., "equation box center", "top of image")
-  * If you cannot determine location, use "location unclear"
-- Preserve EXACT notation as shown - do not rewrite or interpret
-- Examples of what counts as formulas:
-  * "PV = FV / (1+r)^n" ✓
-  * "=B2*C2/(1+D2)^E2" ✓
-  * "E = mc²" ✓
-- Examples of what is NOT a formula:
-  * "calculate the present value" ✗
-  * "multiply price by quantity" ✗
-  * "the formula shows..." ✗
-- If NO formulas are visible, return empty array: []
+- If formulas are NOT explicitly visible but you can infer them from:
+  * Input variables and output values shown in the image
+  * Context from nearby text (OCR text provided)
+  * Standard formulas for the domain (e.g., Black-Scholes for option pricing, present value formulas for finance)
+  * Then INFER and include the formula with description indicating it was inferred
+- IMPORTANT: You may INFER formulas based on context, but DO NOT infer or create new variables or values - only use variables and values that are explicitly shown in the image
 
 **VARIABLES:**
 - ONLY extract if the image explicitly shows variable definitions/meanings
@@ -428,10 +428,26 @@ Based on the classification, extract type-specific metadata:
 - For rows/columns, if you cannot count exactly (e.g., table is cut off), use your best visible count
 - If NO table is visible, return empty array: []
 
+**INPUT VARIABLES:**
+- Extract input variables and their values that are explicitly shown in the image
+- Look for: labeled input fields, parameter lists, "Inputs:" sections, variable names with values
+- Format: {{"variable": "variable name/symbol", "value": "numerical or text value", "unit": "unit if shown (e.g., %, $, years)"}}
+- Examples: {{"variable": "Asset price (S₀)", "value": "125.94", "unit": ""}}, {{"variable": "Risk-free rate (r)", "value": "4.56", "unit": "%"}}
+- DO NOT infer or create variables/values - only extract what is explicitly visible
+- If NO input variables are visible, return empty array: []
+
+**OUTPUT VALUES:**
+- Extract calculated output values that are explicitly shown in the image
+- Look for: result sections, calculated fields, output tables, "Results:" sections
+- Format: {{"output_name": "name of output (e.g., 'Call Price', 'Delta')", "value": "numerical or text value", "location": "where in image (e.g., 'Call column, Price row')"}}
+- Examples: {{"output_name": "Call Price", "value": "13.5589", "location": "Black-Scholes-Merton Model, Call column"}}
+- DO NOT infer or create outputs - only extract what is explicitly visible
+- If NO output values are visible, return empty array: []
+
 **GENERAL RULES:**
 - When in doubt, use EMPTY ARRAY [] rather than guessing
-- Only extract information that is LITERALLY VISIBLE in the image
-- Do not infer, interpret, or create content that isn't explicitly shown
+- For variables and values: Only extract information that is LITERALLY VISIBLE in the image - DO NOT infer or create new variables or values
+- For formulas: You MAY infer formulas based on context (nearby text, input/output relationships, domain knowledge) if they are not explicitly visible, but clearly mark them as inferred
 - If OCR text is provided but you cannot verify it in the image, be cautious
 - Preserve exact text/notation as shown - don't paraphrase or rewrite
 
@@ -448,13 +464,13 @@ Provide a 3-5 sentence educational summary that would help a student understand 
 **For CHART:** Describe chart type, variables plotted, key trends, data range, notable features
 **For FLOWCHART:** Describe the decision process, main stages, flow logic, decision points, outcomes
 **For DIAGRAM:** Describe the purpose, main components, relationships, structure, key insights
-**For IMAGE:** Describe main subject, key visual elements. If present: mention definitions shown, formulas visible (with their exact notation), variables explained, table structures. Focus on factual description of visible content. DO NOT describe formulas/definitions/variables/tables if they are not actually visible.
+**For IMAGE:** Describe main subject, key visual elements. If present: mention definitions shown, formulas visible (with their exact notation), variables explained, table structures. If calculation extraction was performed: explain the input variables extracted, formulas identified (including inferred ones), output values found, and verification results. Focus on factual description of visible content. DO NOT describe definitions/variables/tables if they are not actually visible.
 **For FIGURE:** Describe the content type, main elements, purpose, key takeaway
 
 **Summary Rules:**
-- Only mention formulas/definitions/variables/tables if they are ACTUALLY visible in the image
-- If the image has no formulas, don't mention formulas in the summary
-- Be specific and factual - describe what you see, not what you infer
+- Only mention definitions/variables/tables if they are ACTUALLY visible in the image
+- If the image has no formulas, you may mention formulas what you inferred based on earlier context in the summary
+- Be specific and factual - describe what you see
 
 ---
 
@@ -467,12 +483,12 @@ Provide a 3-5 sentence educational summary that would help a student understand 
   "metadata": {{
     // Include ALL relevant fields from Part 2 based on classification
     // For IMAGE type:
-    //   - definitions: [] if no definitions visible, otherwise array of {{term, definition}}
-    //   - formulas: [] if no formulas visible, otherwise array of {{formula, description, location}}
+    //   - formulas: [] if no formulas visible/inferrable, otherwise array of {{formula (also include inferred ones), description, location}}
     //   - variables: [] if no variable meanings shown, otherwise array of {{variable, meaning}}
     //   - tables: [] if no table visible, otherwise array of table objects
-    // CRITICAL: Use empty arrays [], never omit fields or use null
-    // CRITICAL: Only include data that is LITERALLY VISIBLE in the image
+    //   - input_variables: [] if no inputs visible, otherwise array of {{variable, value, unit}}
+    //   - output_values: [] if no outputs visible, otherwise array of {{output_name, value, location}}
+    // CRITICAL: For variables/values - only include what is LITERALLY VISIBLE. For formulas - may infer from context.
   }},
   "summary": {{
     "text": "3-5 sentence educational summary describing only what is visible",
@@ -690,6 +706,9 @@ Example 4 - Plain screenshot with no special content:
             formulas = metadata.get('formulas', [])
             variables = metadata.get('variables', [])
             tables = metadata.get('tables', [])
+            input_variables = metadata.get('input_variables', [])
+            output_values = metadata.get('output_values', [])
+            calculation_verification = metadata.get('calculation_verification')
             
             # Ensure they're lists (API might return null sometimes)
             if not isinstance(definitions, list):
@@ -700,6 +719,10 @@ Example 4 - Plain screenshot with no special content:
                 variables = []
             if not isinstance(tables, list):
                 tables = []
+            if not isinstance(input_variables, list):
+                input_variables = []
+            if not isinstance(output_values, list):
+                output_values = []
             
             image_data = ImageSpecificData(
                 image_subtype=metadata.get('image_subtype'),
@@ -709,7 +732,10 @@ Example 4 - Plain screenshot with no special content:
                 definitions=definitions,
                 formulas=formulas,
                 variables=variables,
-                tables=tables
+                tables=tables,
+                input_variables=input_variables,
+                output_values=output_values,
+                calculation_verification=calculation_verification
             )
         
         elif visual_type == VisualType.FIGURE:
@@ -824,6 +850,133 @@ Provide ONLY the Mermaid code block, no additional explanation."""
             print(f"    Mermaid extraction failed: {e}")
         
         return None
+
+    def extract_calculations_for_image(self, image: Image.Image, ocr_result: OCRResult, 
+                                      nearby_text: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Extract input variables, formulas, and output values from IMAGE segments.
+        Verifies outputs by cross-validating with formulas and inputs.
+        """
+        if not self.api_key:
+            return {
+                'input_variables': [],
+                'output_values': [],
+                'calculation_verification': None
+            }
+        
+        try:
+            img_base64 = self._encode_image(image)
+            
+            # Build context
+            ocr_context = ""
+            if ocr_result and ocr_result.raw_text:
+                ocr_context = f"\n\n**Text detected in image (OCR):**\n{ocr_result.raw_text[:1000]}"
+            
+            nearby_context = ""
+            if nearby_text:
+                nearby_context = f"\n\n**Nearby text context:**\n{nearby_text[:500]}"
+            
+            prompt = f"""Analyze this image to extract calculation-related information.
+
+{ocr_context}
+{nearby_context}
+
+**Your task:**
+1. Extract all INPUT VARIABLES and their values shown in the image
+2. Extract all OUTPUT VALUES (calculated results) shown in the image
+3. Identify FORMULAS used (either visible or inferrable from context)
+4. Verify outputs by checking if they match expected calculations
+
+**INPUT VARIABLES:**
+- Extract variables and their values from input sections, parameter lists, labeled fields
+- Format: {{"variable": "name", "value": "value", "unit": "unit if shown"}}
+- Only extract what is EXPLICITLY VISIBLE in the image
+
+**OUTPUT VALUES:**
+- Extract calculated results from output sections, result tables, calculated fields
+- Format: {{"output_name": "name", "value": "value", "location": "where in image"}}
+- Only extract what is EXPLICITLY VISIBLE in the image
+
+**FORMULAS:**
+- Extract formulas that are visible OR can be inferred from:
+  * Input/output relationships
+  * Context from nearby text
+  * Domain knowledge (e.g., Black-Scholes for option pricing)
+- Format: {{"formula": "formula", "description": "what it calculates", "location": "where found or 'inferred'"}}
+
+**VERIFICATION:**
+- Compare output values with expected calculations using inputs and formulas
+- Note any discrepancies or matches
+- Format: {{"verified": true/false, "matches": true/false, "differences": ["list of any differences found"]}}
+
+**RESPONSE FORMAT (JSON only):**
+{{
+  "input_variables": [{{"variable": "...", "value": "...", "unit": "..."}}],
+  "output_values": [{{"output_name": "...", "value": "...", "location": "..."}}],
+  "formulas": [{{"formula": "...", "description": "...", "location": "..."}}],
+  "verification": {{
+    "verified": true/false,
+    "matches": true/false,
+    "differences": ["any differences found"]
+  }}
+}}
+"""
+            
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": f"data:image/png;base64,{img_base64}"
+                        }
+                    ]
+                }
+            ]
+            
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"
+                },
+                json={
+                    "model": self.vision_model,
+                    "messages": messages,
+                    "temperature": 0.1,
+                    "max_tokens": 2000
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                content = result['choices'][0]['message']['content']
+                
+                # Parse JSON response
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    calc_data = json.loads(json_match.group())
+                    return {
+                        'input_variables': calc_data.get('input_variables', []),
+                        'output_values': calc_data.get('output_values', []),
+                        'calculation_verification': calc_data.get('verification')
+                    }
+            
+            return {
+                'input_variables': [],
+                'output_values': [],
+                'calculation_verification': None
+            }
+            
+        except Exception as e:
+            print(f"    Warning: Calculation extraction failed: {e}")
+            return {
+                'input_variables': [],
+                'output_values': [],
+                'calculation_verification': None
+            }
 
 
 class CaptionDetector:
@@ -3464,6 +3617,29 @@ class VisualSegmentationPipeline:
         segment.image_data = image_data
         segment.figure_data = figure_data
         
+        # STEP 4.5: Extract calculations for IMAGE segments
+        if segment.segment_type == VisualType.IMAGE and image_data:
+            print(f"    Extracting calculations (inputs, formulas, outputs)...")
+            calc_data = self.mistral_api.extract_calculations_for_image(
+                image,
+                segment.ocr_result,
+                segment.nearby_text
+            )
+            
+            # Merge calculation data into image_data
+            if calc_data.get('input_variables'):
+                image_data.input_variables = calc_data['input_variables']
+            if calc_data.get('output_values'):
+                image_data.output_values = calc_data['output_values']
+            if calc_data.get('calculation_verification'):
+                image_data.calculation_verification = calc_data['calculation_verification']
+            
+            # Update segment reference
+            segment.image_data = image_data
+            
+            if calc_data.get('input_variables') or calc_data.get('output_values'):
+                print(f"    → Extracted {len(calc_data.get('input_variables', []))} inputs, {len(calc_data.get('output_values', []))} outputs")
+        
         # STEP 5: Extract structured text for search/linking
         segment.extracted_text_structured = OCRProcessor.extract_structured_text(
             segment.ocr_result, 
@@ -3649,8 +3825,8 @@ if __name__ == "__main__":
     
     pipeline = VisualSegmentationPipeline(
         book_id="textbook_001",
-        pdf_path="D:\\D-Downloads\\chapter1.pdf",
-        taxonomy_path="D:\\D-Downloads\\Segmentation_Zvi Bodie, Alex Kane, Alan J. Marcus - Investments (2023, McGraw Hill).xlsx",
+        pdf_path="D:\\D-Downloads\\complex.pdf",
+        taxonomy_path="D:\\D-Downloads\\Don M. Chance, Roberts Brooks - An Introduction to Derivatives and Risk Management (2015, South-Western College Pub).xlsx",
         output_dir="./extracted_visuals",
         use_mermaid=False  # Enable Mermaid extraction
     )
@@ -3660,3 +3836,4 @@ if __name__ == "__main__":
     print("\n=== Extraction Summary ===")
     print(f"Total visual elements: {len(segments)}")
     print(f"Segments with Mermaid representations: {sum(1 for s in segments if s.mermaid_repr)}")
+
