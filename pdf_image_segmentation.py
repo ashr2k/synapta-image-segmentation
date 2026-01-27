@@ -2715,6 +2715,8 @@ class VisualSegmentationPipeline:
             self.concept_linker = ConceptLinker(taxonomy_df)
         
         self.segments: List[VisualSegment] = []
+        # Initialize JSON file path
+        self.output_json = self.output_dir / f"{self.book_id}_visual_segments.json"
     
     def process(self) -> List[VisualSegment]:
         """
@@ -2722,25 +2724,38 @@ class VisualSegmentationPipeline:
         Returns list of visual segments.
         """
         print(f"Processing PDF: {self.pdf_path}")
+        
+        # Initialize JSON file with empty structure
+        self._initialize_json_file()
+        
         doc = fitz.open(self.pdf_path)
         
-        for page_num in range(len(doc)):
-            print(f"Processing page {page_num + 1}/{len(doc)}...")
-            page = doc[page_num]
-            
-            # Extract images using PyMuPDF
-            page_segments = self._extract_images_from_page(page, page_num)
-            
-            # Process each segment
-            for segment in page_segments:
-                self._process_segment(segment, page, doc)
-            
-            self.segments.extend(page_segments)
-        
-        doc.close()
-        
-        # Save results
-        self._save_results()
+        try:
+            for page_num in range(len(doc)):
+                print(f"Processing page {page_num + 1}/{len(doc)}...")
+                page = doc[page_num]
+                
+                # Extract images using PyMuPDF
+                page_segments = self._extract_images_from_page(page, page_num)
+                
+                # Process each segment
+                for segment in page_segments:
+                    try:
+                        self._process_segment(segment, page, doc)
+                        self.segments.append(segment)
+                        # Append segment to JSON file incrementally
+                        self._append_segment_to_json(segment)
+                        print(f"    ✓ Saved segment {segment.segment_id} to JSON")
+                    except Exception as e:
+                        print(f"    ✗ Error processing segment: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # Continue with next segment even if one fails
+                        continue
+        finally:
+            doc.close()
+            # Final save to ensure everything is up to date
+            self._save_results()
         
         print(f"\nExtraction complete! Found {len(self.segments)} visual elements.")
         return self.segments
@@ -3834,24 +3849,85 @@ class VisualSegmentationPipeline:
         
         return " ".join(nearby_text)[:500]  # Limit length
     
-    def _save_results(self):
-        """Save segmentation results to JSON"""
-        output_json = self.output_dir / f"{self.book_id}_visual_segments.json"
-        
+    def _initialize_json_file(self):
+        """Initialize JSON file with empty structure"""
         results = {
             'book_id': self.book_id,
             'pdf_path': self.pdf_path,
-            'total_segments': len(self.segments),
-            'segments': [seg.to_dict() for seg in self.segments]
+            'total_segments': 0,
+            'segments': []
         }
         
-        with open(output_json, 'w', encoding='utf-8') as f:
+        with open(self.output_json, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
         
-        print(f"\nResults saved to: {output_json}")
-        
-        # Also create a summary CSV
-        self._save_summary_csv()
+        print(f"Initialized JSON file: {self.output_json}")
+    
+    def _append_segment_to_json(self, segment: VisualSegment):
+        """
+        Append a single segment to the JSON file incrementally.
+        Reads existing file, adds segment, and writes back.
+        """
+        try:
+            # Read existing JSON file
+            if self.output_json.exists():
+                with open(self.output_json, 'r', encoding='utf-8') as f:
+                    results = json.load(f)
+            else:
+                # If file doesn't exist, initialize it
+                results = {
+                    'book_id': self.book_id,
+                    'pdf_path': self.pdf_path,
+                    'total_segments': 0,
+                    'segments': []
+                }
+            
+            # Check if segment already exists (avoid duplicates)
+            segment_ids = [s.get('segment_id') for s in results.get('segments', [])]
+            if segment.segment_id not in segment_ids:
+                # Add new segment
+                results['segments'].append(segment.to_dict())
+                results['total_segments'] = len(results['segments'])
+                
+                # Write back to file
+                with open(self.output_json, 'w', encoding='utf-8') as f:
+                    json.dump(results, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"    Warning: Failed to append segment to JSON: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _save_results(self):
+        """Save segmentation results to JSON (final update)"""
+        try:
+            # Read existing JSON file
+            if self.output_json.exists():
+                with open(self.output_json, 'r', encoding='utf-8') as f:
+                    results = json.load(f)
+            else:
+                results = {
+                    'book_id': self.book_id,
+                    'pdf_path': self.pdf_path,
+                    'total_segments': 0,
+                    'segments': []
+                }
+            
+            # Update with all segments (in case any were missed)
+            results['total_segments'] = len(self.segments)
+            results['segments'] = [seg.to_dict() for seg in self.segments]
+            
+            # Write final version
+            with open(self.output_json, 'w', encoding='utf-8') as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+            
+            print(f"\nFinal results saved to: {self.output_json}")
+            
+            # Also create a summary CSV
+            self._save_summary_csv()
+        except Exception as e:
+            print(f"Warning: Failed to save final results: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _save_summary_csv(self):
         """Create summary CSV for easy review"""
@@ -3886,8 +3962,8 @@ if __name__ == "__main__":
     
     pipeline = VisualSegmentationPipeline(
         book_id="textbook_001",
-        pdf_path="D:\\D-Downloads\\complex.pdf",
-        taxonomy_path="D:\\D-Downloads\\Don M. Chance, Roberts Brooks - An Introduction to Derivatives and Risk Management (2015, South-Western College Pub).xlsx",
+        pdf_path="D:\\D-Downloads\\Zvi Bodie, Alex Kane, Alan J. Marcus - Investments (2023, McGraw Hill).pdf",
+        taxonomy_path="D:\\D-Downloads\\Segmentation_Zvi Bodie, Alex Kane, Alan J. Marcus - Investments (2023, McGraw Hill).xlsx",
         output_dir="./extracted_visuals",
         use_mermaid=False  # Enable Mermaid extraction
     )
